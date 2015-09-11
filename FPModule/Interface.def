@@ -1,0 +1,7 @@
+LIBRARY
+
+EXPORTS
+
+;Functions
+LoadGameEnv @ 1;
+InitGraphic @ 2;
