@@ -35,10 +35,11 @@
 #pragma comment(lib, ".\\lib\\ddraw.lib")
 #pragma comment(lib, ".\\lib\\dxguid.lib")
 
+/* This macro is for client exe debugging */
 #ifndef FP_CLIENT_DEBUG
-#define FP_CLIENT_DEBUG
+// #define FP_CLIENT_DEBUG
 #endif
 
-#ifdef FP_CLIENT_DEBUG
-#pragma comment(linker, "/subsystem:\"console\" /entry:\"WinMainCRTStartup\"")
+#ifndef FP_PROJECT_DEBUG
+// #define FP_PROJECT_DEBUG
 #endif

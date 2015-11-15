@@ -5,12 +5,6 @@
 #include "..\\FPModule\\FPModule.h"
 #include "FPClient.h"
 
-extern HINSTANCE hInst;
-extern HWND hMainWnd;
-extern HMODULE hRcModule;
-extern BOOL fWindowed;
-extern BOOL fActive;
-
 // Global Variables:
 LPDIRECTDRAW7 lpdd = NULL;
 LPDIRECTDRAWSURFACE7 lpddsMain = NULL;
@@ -18,45 +12,43 @@ LPDIRECTDRAWSURFACE7 lpddsBack = NULL;
 
 PALETTEENTRY palMain[FP_STORE_PAL_COUNT];
 
-IGameEnv *mainEnv;
+// Declarations of internal functions
+HRESULT CreateWindowedDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight);
+HRESULT CreateFullScreenDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight, DWORD dwBPP);
 
-typedef VOID(WINAPI *ICreateEnv)(IGameEnv **IEnv);
-
-HRESULT Game_Init()
+HRESULT InitGameDisplay(BOOL flag)
 {
-	// Load up game resources
-	ICreateEnv CreateEnv = (ICreateEnv)GetProcAddress(hRcModule, _T("LoadGameEnv"));
-	CreateEnv(&mainEnv);
-	_tprintf(_T("%s\n"), mainEnv->GetBinPath());
+	DWORD dwRet = E_FAIL;
+	// Check DirectDraw Object
+	if (NULL == lpdd)
+	{
+		return dwRet;
+	}
+
+	// Clean up previous DDraw stuff
+	DestroyGameDisplay();
 
 	// Initialize the game display on window mode or fullscreen
 	if (fWindowed == STAGE_MODE_WINDOWED)
 	{
-		return CreateWindowedDisplay(hMainWnd, STAGE_DEFAULT_WIDTH, STAGE_DEFAULT_HEIGHT);
+		dwRet = CreateWindowedDisplay(hMainWnd, STAGE_DEFAULT_WIDTH, STAGE_DEFAULT_HEIGHT);
 	}
 	else if (fWindowed == STAGE_MODE_FULLSCREEN)
 	{
-		return CreateFullScreenDisplay(hMainWnd, STAGE_DEFAULT_WIDTH, STAGE_DEFAULT_HEIGHT, STAGE_BBP_HIGH);
+		dwRet = CreateFullScreenDisplay(hMainWnd, STAGE_DEFAULT_WIDTH, STAGE_DEFAULT_HEIGHT, STAGE_BBP_HIGH);
 	}
-	return E_FAIL;
+	return dwRet;
 }
 
-HRESULT Game_Shutdown()
+VOID DestroyGameDisplay()
 {
-	DestroyGameDisplay();
-	// Do other cleanup
-	return S_OK;
+	// We just RELEASE them, not DELETE them.
+	SAFE_RELEASE(lpddsBack);
+	SAFE_RELEASE(lpddsMain);
 }
 
 static HRESULT CreateWindowedDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight)
 {
-	// Clean up previous DDraw stuff
-	DestroyGameDisplay();
-	// Init new DDraw stuff begins here
-	if (FAILED(DirectDrawCreateEx(NULL, (VOID**)&lpdd, IID_IDirectDraw7, NULL)))
-	{
-		return E_FAIL;
-	}
 	// Set cooperative level
 	if (FAILED(lpdd->SetCooperativeLevel(hWnd, DDSCL_NORMAL)))
 	{
@@ -68,7 +60,7 @@ static HRESULT CreateWindowedDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight)
 	DWORD dwStyle;
 	// If we are still a WS_POPUP window
 	// We should convert to a normal app window so we look like a windows app.
-	dwStyle = GetWindowStyle(hWnd);
+	dwStyle = GetWindowLong(hWnd, GWL_STYLE);
 	dwStyle &= ~WS_POPUP;
 	dwStyle |= WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
 	SetWindowLong(hWnd, GWL_STYLE, dwStyle);
@@ -83,7 +75,7 @@ static HRESULT CreateWindowedDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight)
 	if (rc.left < rcWork.left) rc.left = rcWork.left;
 	if (rc.top < rcWork.top)  rc.top = rcWork.top;
 	SetWindowPos(hWnd, NULL, rc.left, rc.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
-	
+
 	// Create the primary surface
 	DDSURFACEDESC2 ddsd;
 	DDRAW_INIT_STRUCT(ddsd);
@@ -123,9 +115,9 @@ static HRESULT CreateWindowedDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight)
 
 	// Update window flag
 	fWindowed = TRUE;
-	// Reload the icon for app window
-	SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM)LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON)));
-	SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LPARAM)LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICONSM)));
+	UpdateWindow(hWnd);
+	SetClassLong(hWnd, GCL_HICONSM, (LONG)LoadIcon(hInst, MAKEINTRESOURCE(IDI_ICONSM)));
+	SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LONG)LoadIcon(hInst, MAKEINTRESOURCE(IDI_ICONSM)));
 
 	return S_OK;
 }
@@ -135,7 +127,7 @@ HRESULT CreateFullScreenDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight, DWORD 
 	RECT  rc;
 	DWORD dwStyle;
 	// Set app window's style to WS_POPUP so that it can fit for full screen mode.
-	dwStyle = GetWindowStyle(hWnd);
+	dwStyle = GetWindowLong(hWnd, GWL_STYLE);
 	dwStyle &= ~(WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX);
 	dwStyle |= WS_POPUP;
 	SetWindowLong(hWnd, GWL_STYLE, dwStyle);
@@ -151,7 +143,7 @@ HRESULT CreateFullScreenDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight, DWORD 
 		return E_FAIL;
 	}
 	// Set cooperative level
-	if (FAILED(lpdd->SetCooperativeLevel(hWnd, DDSCL_EXCLUSIVE | DDSCL_FULLSCREEN)))
+	if (FAILED(lpdd->SetCooperativeLevel(hWnd, DDSCL_EXCLUSIVE | DDSCL_FULLSCREEN | DDSCL_ALLOWREBOOT)))
 	{
 		return E_FAIL;
 	}
@@ -185,18 +177,9 @@ HRESULT CreateFullScreenDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight, DWORD 
 
 	// Update window flag
 	fWindowed = FALSE;
+	UpdateWindow(hWnd);
+	SetClassLong(hWnd, GCL_HICONSM, NULL);
+	SendMessage(hWnd, WM_SETICON, ICON_SMALL, NULL);
 
 	return S_OK;
 }
-
-VOID DestroyGameDisplay()
-{
-	SAFE_RELEASE(lpddsBack);
-	SAFE_RELEASE(lpddsMain);
-	if (lpdd)
-	{
-		lpdd->SetCooperativeLevel(hMainWnd, DDSCL_NORMAL);
-	}
-	SAFE_RELEASE(lpdd);
-}
-

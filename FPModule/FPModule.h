@@ -10,11 +10,21 @@
 #pragma once
 
 
+/* This macro is for dll debugging */
 #ifdef FP_MODULE_COMPILE
 #define FP_MODULE_API __declspec(dllexport)
 #else
 #define FP_MODULE_API __declspec(dllimport)
 #endif
+
+/* This macro is for FP project debugging */
+#ifdef FP_PROJECT_DEBUG
+#include <stdarg.h>
+#define FP_DEBUG_MSG(format, ...) _tprintf(format, ##__VA_ARGS__)
+#else
+#define FP_DEBUG_MSG(format, ...)
+#endif
+
 
 /* tstring for different char-set encodings */
 #ifdef _UNICODE

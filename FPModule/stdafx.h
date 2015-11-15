@@ -30,12 +30,17 @@
 #include <hash_map>
 #include <hash_set>
 
+/* This macro is for dll debugging */
+#ifndef FP_MODULE_DEBUG
+#define FP_MODULE_DEBUG
+#define FP_DEBUG_PATH _T("F:\\Programming\\CGames\\FPMainWorkspace\\GameTest\\Null.exe")
+#endif 
+
+#ifndef FP_PROJECT_DEBUG
+#define FP_PROJECT_DEBUG
+#endif
+
 /* This macro is for dll exports */
 #ifndef FP_MODULE_COMPILE
 #define FP_MODULE_COMPILE
 #endif
-
-/* This macro is for dll debugging */
-#define FP_MODULE_DEBUG
-#define FP_DEBUG_PATH _T("F:\\Programming\\CGame\\FPMainWorkspace\\GameTest\\Null.exe")
-

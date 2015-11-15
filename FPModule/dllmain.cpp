@@ -26,12 +26,15 @@ BOOL APIENTRY DllMain(
 		(_tcsrchr(exeFilePath, _T('\\')))[0] = 0; //删除文件名，只获得路径字串（不含结尾反斜杠）
 		if (S_OK == GameEnv::InitEnv(exeFilePath)) //初始化游戏资源环境
 		{
+			FP_DEBUG_MSG(_T("Game Env has been initialized.\n"));
 			mainEnv = GameEnv::GetEnv();
 		}
 		break;
 
 	case DLL_PROCESS_DETACH:
 		mainEnv->ReleaseEnv();
+		mainEnv = NULL;
+		FP_DEBUG_MSG(_T("Game Env has been released.\n"));
 		break;
 
 	default:

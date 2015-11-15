@@ -30,25 +30,30 @@ GameEnv::GameEnv(const PGameRes pRes)
 	//生成二进制资源库
 	pGraphic = new GraphicLink();
 	path = pRes->pBinLib->binPath;
-	pGraphic->hGraphicInfo = CreateFile((path+pRes->pBinLib->sGraphicInfo).c_str(), GENERIC_READ, FILE_SHARE_READ, 
+	pGraphic->hGraphicInfo = CreateFile((path + pRes->pBinLib->sGraphicInfo).c_str(), GENERIC_READ, FILE_SHARE_READ,
 		NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-	pGraphic->hGraphicData = CreateFile((path+pRes->pBinLib->sGraphicData).c_str(), GENERIC_READ, FILE_SHARE_READ, 
+	pGraphic->hGraphicData = CreateFile((path + pRes->pBinLib->sGraphicData).c_str(), GENERIC_READ, FILE_SHARE_READ,
 		NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-	pGraphic->hAnimeInfo = CreateFile((path+pRes->pBinLib->sAnimeInfo).c_str(), GENERIC_READ, FILE_SHARE_READ, 
+	pGraphic->hAnimeInfo = CreateFile((path + pRes->pBinLib->sAnimeInfo).c_str(), GENERIC_READ, FILE_SHARE_READ,
 		NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-	pGraphic->hAnimeData = CreateFile((path+pRes->pBinLib->sAnimeData).c_str(), GENERIC_READ, FILE_SHARE_READ, 
+	pGraphic->hAnimeData = CreateFile((path + pRes->pBinLib->sAnimeData).c_str(), GENERIC_READ, FILE_SHARE_READ,
 		NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
 }
 
 GameEnv::~GameEnv()
 {
-	CloseHandle(this->pGraphic->hGraphicInfo);
-	CloseHandle(this->pGraphic->hGraphicData);
-	CloseHandle(this->pGraphic->hAnimeInfo);
-	CloseHandle(this->pGraphic->hAnimeData);
-	//释放其他资源
-	SAFE_DELETE_ARRAY(this->pGameRes->pBinLib->pLibPal->fileList);
-	SAFE_DELETE(this->pGameRes);
+	//释放影像资源句柄
+	if (this->pGraphic)
+	{
+		if (this->pGraphic->hGraphicInfo != NULL && this->pGraphic->hGraphicInfo != INVALID_HANDLE_VALUE)
+			CloseHandle(this->pGraphic->hGraphicInfo);
+		if (this->pGraphic->hGraphicData != NULL && this->pGraphic->hGraphicData != INVALID_HANDLE_VALUE)
+			CloseHandle(this->pGraphic->hGraphicData);
+		if (this->pGraphic->hAnimeInfo != NULL && this->pGraphic->hAnimeInfo != INVALID_HANDLE_VALUE)
+			CloseHandle(this->pGraphic->hAnimeInfo);
+		if (this->pGraphic->hAnimeData != NULL && this->pGraphic->hAnimeData != INVALID_HANDLE_VALUE)
+			CloseHandle(this->pGraphic->hAnimeData);
+	}
 }
 
 PGameRes WINAPI GameEnv::OpenResFiles(const tstring whichPath)
@@ -61,7 +66,7 @@ PGameRes WINAPI GameEnv::OpenResFiles(const tstring whichPath)
 	subPath = whichPath + FP_PATH_BIN;
 	pRes->pBinLib = new BinLib();
 	ZeroMemory(pRes->pBinLib, sizeof(BinLib));
-	if(!CheckBinLib(subPath, pRes->pBinLib))
+	if (!CheckBinLib(subPath, pRes->pBinLib))
 	{
 		SAFE_DELETE(pRes->pBinLib);
 		SAFE_DELETE(pRes);
@@ -71,7 +76,7 @@ PGameRes WINAPI GameEnv::OpenResFiles(const tstring whichPath)
 	subPath = whichPath + FP_PATH_DAT;
 	pRes->pDataSet = new DataSet();
 	ZeroMemory(pRes->pDataSet, sizeof(DataSet));
-	if(!CheckDataSet(subPath, pRes->pDataSet))
+	if (!CheckDataSet(subPath, pRes->pDataSet))
 	{
 		SAFE_DELETE(pRes);
 		return NULL;
@@ -95,13 +100,13 @@ HRESULT WINAPI GameEnv::InitEnv(const tstring whichPath)
 		ErrorHandler(ERROR_RES_Unknown, _T(__FUNCTION__));
 		return E_FAIL;
 	}
-	if(!IsFolderExist(whichPath)) //检查路径是否存在
+	if (!IsFolderExist(whichPath)) //检查路径是否存在
 	{
 		ErrorHandler(ERROR_RES_MissingPath, _T(__FUNCTION__));
 		return E_FAIL;
 	}
 	PGameRes pRes = OpenResFiles(whichPath);
-	if(NULL != pRes) //检查资源文件完整性
+	if (NULL != pRes) //检查资源文件完整性
 	{
 		pEnv = new GameEnv(pRes);
 		return S_OK;
@@ -191,7 +196,7 @@ static BOOL WINAPI CheckPalLib(const tstring whichPath, PPalLib &pal)
 	int n = 0; //临时数组索引
 	BOOL failed = FALSE; //是否检查失败
 	//检查目录
-	if(!IsFolderExist(whichPath))
+	if (!IsFolderExist(whichPath))
 	{
 		ErrorHandler(ERROR_RES_MissingPath, _T(__FUNCTION__));
 		return FALSE;
@@ -214,10 +219,10 @@ static BOOL WINAPI CheckPalLib(const tstring whichPath, PPalLib &pal)
 		pos = tmpPath.find(_T("_")) + 1;
 		size = tmpPath.rfind(_T(".")) - pos;
 		tmpPath = tmpPath.substr(pos, size);
-		if(2 == tmpPath.length() && isdigit(tmpPath[0]) && isdigit(tmpPath[1]))
+		if (2 == tmpPath.length() && isdigit(tmpPath[0]) && isdigit(tmpPath[1]))
 		{
 			n = _ttoi(tmpPath.c_str());
-			if(n < 0 || n > FP_FILE_COUNT_PAL || NULL != pal->fileList[n])
+			if (n < 0 || n > FP_FILE_COUNT_PAL || NULL != pal->fileList[n])
 			{
 				ErrorHandler(ERROR_RES_DuplicatedFile, _T(__FUNCTION__));
 				failed = TRUE;
@@ -236,11 +241,10 @@ static BOOL WINAPI CheckPalLib(const tstring whichPath, PPalLib &pal)
 			failed = TRUE;
 			break;
 		}
-	}
-	while(FindNextFile(hFile, &ffd));
+	} while (FindNextFile(hFile, &ffd));
 	FindClose(hFile);
 	//数量检查出问题
-	if(failed || FP_FILE_COUNT_PAL != pal->sum)
+	if (failed || FP_FILE_COUNT_PAL != pal->sum)
 	{
 		ErrorHandler(ERROR_RES_FilesSumMismatch, _T(__FUNCTION__));
 		SAFE_DELETE_ARRAY(pal->fileList);
@@ -259,7 +263,7 @@ static BOOL WINAPI CheckBinLib(const tstring whichPath, PBinLib &bin)
 	tstring filePath, tmpPath, sVerGraph, sVerAnime; //临时字符串
 	tstring::size_type pos, size; //查找位置
 	//检查目录
-	if(!IsFolderExist(whichPath))
+	if (!IsFolderExist(whichPath))
 	{
 		ErrorHandler(ERROR_RES_MissingPath, _T(__FUNCTION__));
 		return FALSE;
@@ -270,14 +274,14 @@ static BOOL WINAPI CheckBinLib(const tstring whichPath, PBinLib &bin)
 	filePath += _T("*");
 	filePath += FP_FILE_SUFFIX_BIN;
 	hFile = FindFirstFile(filePath.c_str(), &ffd);
-	if(INVALID_HANDLE_VALUE != hFile)
+	if (INVALID_HANDLE_VALUE != hFile)
 	{
 		tmpPath = ffd.cFileName;
 		pos = tmpPath.rfind(_T("_")) + 1;
 		size = tmpPath.rfind(_T(".")) - pos;
 		sVerGraph = tmpPath.substr(pos, size);
 		nVerGraph = _ttoi(sVerGraph.c_str());
-		if(FindNextFile(hFile, &ffd)) //重复文件处理
+		if (FindNextFile(hFile, &ffd)) //重复文件处理
 		{
 			ErrorHandler(ERROR_RES_DuplicatedFile, _T(__FUNCTION__));
 			FindClose(hFile);
@@ -296,14 +300,14 @@ static BOOL WINAPI CheckBinLib(const tstring whichPath, PBinLib &bin)
 	filePath += _T("*");
 	filePath += FP_FILE_SUFFIX_BIN;
 	hFile = FindFirstFile(filePath.c_str(), &ffd);
-	if(INVALID_HANDLE_VALUE != hFile)
+	if (INVALID_HANDLE_VALUE != hFile)
 	{
 		tmpPath = ffd.cFileName;
 		pos = tmpPath.rfind(_T("_")) + 1;
 		size = tmpPath.rfind(_T(".")) - pos;
 		sVerGraph = tmpPath.substr(pos, size);
 		nTmp = _ttoi(sVerGraph.c_str());
-		if(FindNextFile(hFile, &ffd)) //重复文件处理
+		if (FindNextFile(hFile, &ffd)) //重复文件处理
 		{
 			ErrorHandler(ERROR_RES_DuplicatedFile, _T(__FUNCTION__));
 			FindClose(hFile);
@@ -318,7 +322,7 @@ static BOOL WINAPI CheckBinLib(const tstring whichPath, PBinLib &bin)
 		return FALSE;
 	}
 	//判断图像版本是否一致
-	if(nTmp!=nVerGraph)
+	if (nTmp != nVerGraph)
 	{
 		ErrorHandler(ERROR_RES_VersionMismatch, _T(__FUNCTION__));
 		return FALSE;
@@ -329,14 +333,14 @@ static BOOL WINAPI CheckBinLib(const tstring whichPath, PBinLib &bin)
 	filePath += _T("*");
 	filePath += FP_FILE_SUFFIX_BIN;
 	hFile = FindFirstFile(filePath.c_str(), &ffd);
-	if(INVALID_HANDLE_VALUE != hFile)
+	if (INVALID_HANDLE_VALUE != hFile)
 	{
 		tmpPath = ffd.cFileName;
 		pos = tmpPath.rfind(_T("_")) + 1;
 		size = tmpPath.rfind(_T(".")) - pos;
 		sVerAnime = tmpPath.substr(pos, size);
 		nVerAnime = _ttoi(sVerAnime.c_str());
-		if(FindNextFile(hFile, &ffd)) //重复文件处理
+		if (FindNextFile(hFile, &ffd)) //重复文件处理
 		{
 			ErrorHandler(ERROR_RES_DuplicatedFile, _T(__FUNCTION__));
 			FindClose(hFile);
@@ -355,14 +359,14 @@ static BOOL WINAPI CheckBinLib(const tstring whichPath, PBinLib &bin)
 	filePath += _T("*");
 	filePath += FP_FILE_SUFFIX_BIN;
 	hFile = FindFirstFile(filePath.c_str(), &ffd);
-	if(INVALID_HANDLE_VALUE != hFile)
+	if (INVALID_HANDLE_VALUE != hFile)
 	{
 		tmpPath = ffd.cFileName;
 		pos = tmpPath.rfind(_T("_")) + 1;
 		size = tmpPath.rfind(_T(".")) - pos;
 		sVerAnime = tmpPath.substr(pos, size);
 		nTmp = _ttoi(sVerAnime.c_str());
-		if(FindNextFile(hFile, &ffd)) //重复文件处理
+		if (FindNextFile(hFile, &ffd)) //重复文件处理
 		{
 			ErrorHandler(ERROR_RES_DuplicatedFile, _T(__FUNCTION__));
 			FindClose(hFile);
@@ -377,7 +381,7 @@ static BOOL WINAPI CheckBinLib(const tstring whichPath, PBinLib &bin)
 		return FALSE;
 	}
 	//判断动画版本是否一致
-	if(nTmp!=nVerAnime)
+	if (nTmp != nVerAnime)
 	{
 		ErrorHandler(ERROR_RES_VersionMismatch, _T(__FUNCTION__));
 		return FALSE;
@@ -389,7 +393,7 @@ static BOOL WINAPI CheckBinLib(const tstring whichPath, PBinLib &bin)
 	//检查调色板
 	bin->pLibPal = new PalLib();
 	ZeroMemory(bin->pLibPal, sizeof(PalLib));
-	if(!CheckPalLib(whichPath + FP_PATH_PAL, bin->pLibPal))
+	if (!CheckPalLib(whichPath + FP_PATH_PAL, bin->pLibPal))
 	{
 		SAFE_DELETE(bin->pLibPal);
 		return FALSE;

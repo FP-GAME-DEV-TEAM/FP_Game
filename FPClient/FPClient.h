@@ -10,6 +10,10 @@
 
 #include "resource.h"
 
+#ifdef FP_CLIENT_DEBUG
+#pragma comment(linker, "/subsystem:\"console\" /entry:\"WinMainCRTStartup\"")
+#endif
+
 /* Game resources lib info */
 #define GAME_RESOURCE_DLL _T("FPModule.dll")
 
@@ -31,9 +35,13 @@
 #define STAGE_MODE_FULLSCREEN		FALSE
 #define STAGE_MODE_WINDOWED			TRUE
 
+// Declarations of external globals
+extern HINSTANCE hInst;
+extern HWND hMainWnd;
+extern BOOL fWindowed;
+extern BOOL fActive;
+extern LPDIRECTDRAW7 lpdd;
 
-HRESULT Game_Init();
-HRESULT Game_Shutdown();
-HRESULT CreateWindowedDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight);
-HRESULT CreateFullScreenDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight, DWORD dwBPP);
-VOID DestroyGameDisplay();
+// Declarations of external functions
+extern HRESULT InitGameDisplay(BOOL flag);
+extern VOID DestroyGameDisplay();

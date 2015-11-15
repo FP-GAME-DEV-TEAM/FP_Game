@@ -18,9 +18,9 @@ VOID CALLBACK ReadCompleted(DWORD dwError, DWORD dwCount, LPOVERLAPPED lpOver)
 
 BOOL WINAPI FileReadData(HANDLE hFile, BOOL isAsync, DWORD dwOffset, LONG dwSize, LPVOID lpBuffer)
 {
+	BOOL bResult;
 	DWORD dwCount = 0;
 	DWORD dwError = 0;
-	BOOL bResult;
 	LPOVERLAPPED lpOver;
 	if(isAsync)
 	{
