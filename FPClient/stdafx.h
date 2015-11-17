@@ -37,9 +37,9 @@
 
 /* This macro is for client exe debugging */
 #ifndef FP_CLIENT_DEBUG
-// #define FP_CLIENT_DEBUG
+#define FP_CLIENT_DEBUG
 #endif
 
 #ifndef FP_PROJECT_DEBUG
-// #define FP_PROJECT_DEBUG
+#define FP_PROJECT_DEBUG
 #endif

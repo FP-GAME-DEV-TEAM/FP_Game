@@ -10,8 +10,14 @@
 
 #include "resource.h"
 
+#include "..\\FPModule\\FPModule.h"
+
 #ifdef FP_CLIENT_DEBUG
+#if (defined UNICODE) || (defined _UNICODE)
+#pragma comment(linker, "/subsystem:\"console\" /entry:\"wWinMainCRTStartup\"")
+#else
 #pragma comment(linker, "/subsystem:\"console\" /entry:\"WinMainCRTStartup\"")
+#endif
 #endif
 
 /* Game resources lib info */

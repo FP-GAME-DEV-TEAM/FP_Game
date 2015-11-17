@@ -2,7 +2,6 @@
 //
 
 #include "stdafx.h"
-#include "..\\FPModule\\FPModule.h"
 #include "FPClient.h"
 
 // Global Variables:
@@ -13,13 +12,13 @@ LPDIRECTDRAWSURFACE7 lpddsBack = NULL;
 PALETTEENTRY palMain[FP_STORE_PAL_COUNT];
 
 // Declarations of internal functions
-HRESULT CreateWindowedDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight);
-HRESULT CreateFullScreenDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight, DWORD dwBPP);
+static HRESULT CreateWindowedDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight);
+static HRESULT CreateFullScreenDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight, DWORD dwBPP);
 
 HRESULT InitGameDisplay(BOOL flag)
 {
 	DWORD dwRet = E_FAIL;
-	// Check DirectDraw Object
+	// Check if DirectDraw Object exist
 	if (NULL == lpdd)
 	{
 		return dwRet;
@@ -32,17 +31,27 @@ HRESULT InitGameDisplay(BOOL flag)
 	if (fWindowed == STAGE_MODE_WINDOWED)
 	{
 		dwRet = CreateWindowedDisplay(hMainWnd, STAGE_DEFAULT_WIDTH, STAGE_DEFAULT_HEIGHT);
+		if (S_OK == dwRet)
+		{
+			fWindowed = TRUE;
+			FP_DEBUG_MSG(_T("Switched to windowed display mode.\n"));
+		}
 	}
 	else if (fWindowed == STAGE_MODE_FULLSCREEN)
 	{
-		dwRet = CreateFullScreenDisplay(hMainWnd, STAGE_DEFAULT_WIDTH, STAGE_DEFAULT_HEIGHT, STAGE_BBP_HIGH);
+		dwRet = CreateFullScreenDisplay(hMainWnd, STAGE_DEFAULT_WIDTH, STAGE_DEFAULT_HEIGHT, STAGE_BPP_INDEX);
+		if (S_OK == dwRet)
+		{
+			fWindowed = FALSE;
+			FP_DEBUG_MSG(_T("Switched to full-screen display mode.\n"));
+		}
 	}
 	return dwRet;
 }
 
 VOID DestroyGameDisplay()
 {
-	// We just RELEASE them, not DELETE them.
+	// Just RELEASE them, not DELETE them.
 	SAFE_RELEASE(lpddsBack);
 	SAFE_RELEASE(lpddsMain);
 }
@@ -114,15 +123,14 @@ static HRESULT CreateWindowedDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight)
 	lpClipper->Release();
 
 	// Update window flag
-	fWindowed = TRUE;
-	UpdateWindow(hWnd);
 	SetClassLong(hWnd, GCL_HICONSM, (LONG)LoadIcon(hInst, MAKEINTRESOURCE(IDI_ICONSM)));
 	SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LONG)LoadIcon(hInst, MAKEINTRESOURCE(IDI_ICONSM)));
+	UpdateWindow(hWnd);
 
 	return S_OK;
 }
 
-HRESULT CreateFullScreenDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight, DWORD dwBPP)
+static HRESULT CreateFullScreenDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight, DWORD dwBPP)
 {
 	RECT  rc;
 	DWORD dwStyle;
@@ -135,13 +143,6 @@ HRESULT CreateFullScreenDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight, DWORD 
 	SetRect(&rc, 0, 0, dwWidth, dwHeight);
 	AdjustWindowRectEx(&rc, GetWindowStyle(hWnd), GetMenu(hWnd) != NULL, GetWindowExStyle(hWnd));
 
-	// Clean up previous DDraw stuff
-	DestroyGameDisplay();
-	// Init new DDraw stuff begins here
-	if (FAILED(DirectDrawCreateEx(NULL, (VOID**)&lpdd, IID_IDirectDraw7, NULL)))
-	{
-		return E_FAIL;
-	}
 	// Set cooperative level
 	if (FAILED(lpdd->SetCooperativeLevel(hWnd, DDSCL_EXCLUSIVE | DDSCL_FULLSCREEN | DDSCL_ALLOWREBOOT)))
 	{
@@ -176,10 +177,9 @@ HRESULT CreateFullScreenDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight, DWORD 
 	lpddsBack->AddRef();
 
 	// Update window flag
-	fWindowed = FALSE;
-	UpdateWindow(hWnd);
 	SetClassLong(hWnd, GCL_HICONSM, NULL);
 	SendMessage(hWnd, WM_SETICON, ICON_SMALL, NULL);
+	UpdateWindow(hWnd);
 
 	return S_OK;
 }

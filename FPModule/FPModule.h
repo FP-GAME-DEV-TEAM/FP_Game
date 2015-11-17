@@ -25,9 +25,8 @@
 #define FP_DEBUG_MSG(format, ...)
 #endif
 
-
 /* tstring for different char-set encodings */
-#ifdef _UNICODE
+#if (defined UNICODE) || (defined _UNICODE)
 #define tstring std::wstring
 #else
 #define tstring std::string

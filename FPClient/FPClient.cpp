@@ -2,7 +2,6 @@
 //
 
 #include "stdafx.h"
-#include "..\\FPModule\\FPModule.h"
 #include "FPClient.h"
 
 #define MAX_LOADSTRING 64
@@ -10,7 +9,7 @@
 // Global Variables:
 HINSTANCE hInst;								// Current instance
 HWND hMainWnd;									// Main window handle
-HMODULE hRcModule;								// FPModule dll
+HMODULE hRcModule;								// FPModule DLL
 
 TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
 TCHAR szWindowClass[MAX_LOADSTRING];			// The main window class name
@@ -29,8 +28,9 @@ typedef VOID(WINAPI *ICreateEnv)(IGameEnv **IEnv);
 // Forward declarations of functions included in this code module:
 BOOL				InitWnd(int, HACCEL*);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
-HRESULT				Game_Init();
-HRESULT				Game_Shutdown();
+HRESULT				GameLoop();
+HRESULT				GameInit();
+HRESULT				GameExit();
 
 int APIENTRY _tWinMain(HINSTANCE hInstance,
 	HINSTANCE hPrevInstance,
@@ -61,13 +61,13 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	wcex.hInstance = hInstance;
 	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON));
 	wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
-	wcex.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
+	wcex.hbrBackground = (HBRUSH)GetStockObject(GRAY_BRUSH);
 	wcex.lpszMenuName = MAKEINTRESOURCE(IDS_APP_TITLE);
 	wcex.lpszClassName = szWindowClass;
 	wcex.hIconSm = NULL;
 	if (!RegisterClassEx(&wcex))
 	{
-		MessageBox(hMainWnd, _T("Fail to register Window class!"), _T("Error"), MB_ICONERROR | MB_OK);
+		MessageBox(hMainWnd, _T("Fail to register the window class!"), _T("Error"), MB_ICONERROR | MB_OK);
 		return -1;
 	}
 
@@ -75,11 +75,12 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	fWindowed = TRUE;
 	if (!InitWnd(nCmdShow, &hAccel))
 	{
-		MessageBox(hMainWnd, _T("An unknown error has occurred on initialization!"), _T("Error"), MB_ICONERROR | MB_OK);
+		MessageBox(hMainWnd, _T("Fail to initialize the window instance!"), _T("Error"), MB_ICONERROR | MB_OK);
 		return -2;
 	}
 
 	// Load dependent lib(s)
+	FP_DEBUG_MSG(_T("Now loading FPModule...\n"));
 	hRcModule = LoadLibrary(GAME_RESOURCE_DLL);
 	if (NULL == hRcModule)
 	{
@@ -88,7 +89,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	}
 
 	// Start game logic
-	if (S_OK != Game_Init())
+	if (S_OK != GameInit())
 	{
 		MessageBox(hMainWnd, _T("Game starting failed!"), _T("Error"), MB_ICONERROR | MB_OK);
 		return -4;
@@ -96,6 +97,11 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	// Main message loop:
 	HANDLE hMainTimer = CreateWaitableTimer(NULL, FALSE, NULL);
+	if (!hMainTimer)
+	{
+		FP_DEBUG_MSG(_T("CreateWaitableTimer failed (%d)\n"), GetLastError());
+		return -5;
+	}
 	LARGE_INTEGER liDueTime;
 	liDueTime.QuadPart = -1i64;
 	LONG lTimeout = 1000 / GAME_FRAME_RATE;
@@ -107,6 +113,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 		{
 		case GAME_LOOP_TIMER:
 			//³¡¾°±ä»»ÓëäÖÈ¾
+			GameLoop();
 			break;
 
 		case GAME_LOOP_SYSMSG:
@@ -116,7 +123,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 				{
 					fExit = TRUE;
 					// Release game logic
-					Game_Shutdown();
+					GameExit();
 					break;
 				}
 				if (0 == TranslateAccelerator(hMainWnd, hAccel, &msg))
@@ -132,6 +139,10 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 			break;
 		}
 	}
+	CloseHandle(hMainTimer);
+#ifdef FP_PROJECT_DEBUG
+	system("PAUSE");
+#endif
 	return (int)msg.wParam;
 }
 
@@ -150,12 +161,17 @@ BOOL InitWnd(int nCmdShow, HACCEL *phAccel)
 	return TRUE;
 }
 
-HRESULT Game_Init()
+HRESULT GameLoop()
+{
+	return S_OK;
+}
+
+HRESULT GameInit()
 {
 	// Load game resources
 	if (NULL == mainEnv)
 	{
-		ICreateEnv CreateEnv = (ICreateEnv)GetProcAddress(hRcModule, _T("LoadGameEnv"));
+		ICreateEnv CreateEnv = (ICreateEnv)GetProcAddress(hRcModule, "LoadGameEnv");
 		CreateEnv(&mainEnv);
 		if (NULL == mainEnv)
 		{
@@ -173,6 +189,7 @@ HRESULT Game_Init()
 		FP_DEBUG_MSG(_T("DirectDraw has been created.\n"));
 		if (FAILED(InitGameDisplay(fWindowed)))
 		{
+			FP_DEBUG_MSG(_T("Failed to start display mode!\n"));
 			return E_FAIL;
 		}
 	}
@@ -180,16 +197,21 @@ HRESULT Game_Init()
 	return S_OK;
 }
 
-HRESULT Game_Shutdown()
+HRESULT GameExit()
 {
-	// Destroy game resources
+	// Destroy game display
 	mainEnv = NULL;
 	if (lpdd)
 	{
 		lpdd->SetCooperativeLevel(hMainWnd, DDSCL_NORMAL);
 	}
 	SAFE_RELEASE(lpdd);
+	FP_DEBUG_MSG(_T("DirectDraw has been destroyed!\n"));
+
+	// Release game resources
+	FP_DEBUG_MSG(_T("Now unloading FPModule...\n"));
 	FreeLibrary(hRcModule);
+
 	// Do other cleanup
 	FP_DEBUG_MSG(_T("Game Shutdown!\n"));
 	return S_OK;
