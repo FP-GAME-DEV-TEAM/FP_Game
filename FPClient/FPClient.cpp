@@ -140,6 +140,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 		}
 	}
 	CloseHandle(hMainTimer);
+	FreeLibrary(hRcModule);
 #ifdef FP_PROJECT_DEBUG
 	system("PAUSE");
 #endif

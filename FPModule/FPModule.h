@@ -37,6 +37,43 @@
 #define __S(x) _T(#x)
 
 
+//-----------------------------------------------------------------------------
+// Misc Functions
+//-----------------------------------------------------------------------------
+#define SAFE_DELETE(p)       { if(p) { delete (p);     (p)=NULL; } }
+#define SAFE_DELETE_ARRAY(p) { if(p) { delete[] (p);   (p)=NULL; } }
+#define SAFE_RELEASE(p)      { if(p) { (p)->Release(); (p)=NULL; } }
+#define DDRAW_INIT_STRUCT(ddstruct) { memset(&ddstruct, 0, sizeof(ddstruct)); ddstruct.dwSize = sizeof(ddstruct);}
+
+
+//-----------------------------------------------------------------------------
+// Game Message Defines
+//-----------------------------------------------------------------------------
+
+// Start at 0x0400, AKA WM_USER. end with 0x7fff.
+// FP project own message base value
+#define FPMSG_BASE						(WM_USER + 0x0100)
+
+// Thread message
+#define FPMSG_THREAD_START				(FPMSG_BASE + 0x0100)
+#define FPMSG_THREAD_STOP				(FPMSG_BASE + 0x0101)
+
+#define FPMSG_IO_BIN_REQ				(FPMSG_BASE + 0x0110)
+#define FPMSG_IO_BIN_RSP				(FPMSG_BASE + 0x0111)
+#define FPMSG_IO_BIN_PAL				(FPMSG_BASE + 0x0112)
+
+#define FPMSG_IO_SND_REQ				(FPMSG_BASE + 0x0120)
+#define FPMSG_IO_SND_RSP				(FPMSG_BASE + 0x0121)
+#define FPMSG_IO_BGM_ON					(FPMSG_BASE + 0x0122)
+#define FPMSG_IO_BGM_OFF				(FPMSG_BASE + 0x0123)
+
+#define FPMSG_END						(WM_USER + 0x0c00 - 1)
+
+
+//=====================================
+// Game Constant Defines
+//
+
 //资源数量宏定义
 #define FP_FILE_NAME_SIZE 32
 #define FP_FILE_COUNT_BGM 43
@@ -120,7 +157,7 @@ typedef enum tagPalette
 #define FP_FILE_SUFFIX_WAV _T(".wav") //音效文件后缀
 
 
-//================================
+//=====================================
 // Resource Data Types
 //
 
@@ -214,7 +251,7 @@ typedef struct tagGraphicLink
 } GraphicLink, *PGraphicLink;
 
 
-//================================
+//=====================================
 // Game Environment Interface
 //
 
@@ -233,7 +270,7 @@ public:
 };
 
 
-//================================
+//=====================================
 // Utility API
 //
 
@@ -252,25 +289,6 @@ inline tstring WINAPI StrToLower(const tstring &str)
 	return tmp;
 }
 
-
-//-----------------------------------------------------------------------------
-// Misc functions
-//-----------------------------------------------------------------------------
-#define SAFE_DELETE(p)       { if(p) { delete (p);     (p)=NULL; } }
-#define SAFE_DELETE_ARRAY(p) { if(p) { delete[] (p);   (p)=NULL; } }
-#define SAFE_RELEASE(p)      { if(p) { (p)->Release(); (p)=NULL; } }
-
-#define DDRAW_INIT_STRUCT(ddstruct) { memset(&ddstruct, 0, sizeof(ddstruct)); ddstruct.dwSize = sizeof(ddstruct);}
-
 LPTSTR WINAPI NewPath(const tstring &str, const int size); //利用不可更改的字符串，得到用户自定长度的字符串
 BOOL WINAPI IsFolderExist(tstring whichPath); //判读目录是否存在，不存在返回FALSE
 HWND WINAPI GetRootWindow(HWND hWnd); //带入任意控件句柄，获得最上层父窗口的句柄
-
-
-//================================
-// IO API
-//
-
-BOOL WINAPI FileReadData(HANDLE hFile, BOOL isAsync, DWORD dwOffset, LONG dwSize, LPVOID lpBuffer);
-BOOL WINAPI FileWriteData(HANDLE hFile, BOOL isAsync, DWORD dwOffset, LPVOID lpBuffer, LONG dwSize);
-

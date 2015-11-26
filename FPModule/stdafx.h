@@ -14,6 +14,7 @@
 // Windows Header Files:
 #include <windows.h>
 #include <objbase.h>
+#include <process.h>
 #include <ddraw.h>
 
 // C RunTime Header Files

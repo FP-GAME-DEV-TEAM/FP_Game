@@ -1,5 +1,5 @@
 /********************************
-* FileName: FPError.cpp
+* FileName: FPDump.cpp
 * FileFunc: FP游戏资源类型实现模块
 * Author: SQK
 * Date: 2013-07-25
@@ -8,13 +8,13 @@
 
 #include "stdafx.h"
 #include "FPModule.h"
-#include "FPDataType.h"
+#include "FPDump.h"
 
 //资源错误链表
 static ResError gErrorList = {ERROR_RES_Unknown, NULL, NULL};
 static PResError gpLastErr = &gErrorList;
 
-//================================
+//=====================================
 //错误处理函数的实现
 //
 ResError WINAPI ErrorHandler(ErrorRes type, const LPTSTR funcName)

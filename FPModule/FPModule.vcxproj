@@ -25,7 +25,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <PlatformToolset>v120</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -97,10 +97,11 @@
       <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</CompileAsManaged>
     </ClCompile>
     <ClCompile Include="FPCheck.cpp" />
-    <ClCompile Include="FPError.cpp" />
+    <ClCompile Include="FPDump.cpp" />
     <ClCompile Include="FPGraphic.cpp" />
     <ClCompile Include="FPIO.cpp" />
     <ClCompile Include="FPResource.cpp" />
+    <ClCompile Include="FPThread.cpp" />
     <ClCompile Include="FPUtility.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -109,6 +110,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FPDataType.h" />
+    <ClInclude Include="FPDump.h" />
     <ClInclude Include="FPFunction.h" />
     <ClInclude Include="FPModule.h" />
     <ClInclude Include="stdafx.h" />

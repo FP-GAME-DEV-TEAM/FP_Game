@@ -9,15 +9,16 @@
 #include "stdafx.h"
 #include "FPModule.h"
 #include "FPDataType.h"
-#include "FPFunction.h"
+#include "FPDump.h"
 
 //资源检查函数声明
 static BOOL WINAPI CheckPalLib(const tstring whichPath, PPalLib &pal);
 static BOOL WINAPI CheckBinLib(const tstring whichPath, PBinLib &pLib);
 static BOOL WINAPI CheckDataSet(const tstring whichPath, PDataSet &pLib);
 
+extern GameEnv *mainEnv;
 
-//================================
+//=====================================
 // GameEnv类中，资源检查部分的实现
 //
 
@@ -93,7 +94,8 @@ HRESULT WINAPI GameEnv::InitEnv(const tstring whichPath)
 {
 	if (NULL != pEnv) //检查是否已经初始化
 	{
-		return E_FAIL;
+		mainEnv = pEnv;
+		return E_HANDLE;
 	}
 	if (_T('\\') == whichPath[whichPath.length() - 1]) //检查结尾反斜杠符
 	{
@@ -109,14 +111,10 @@ HRESULT WINAPI GameEnv::InitEnv(const tstring whichPath)
 	if (NULL != pRes) //检查资源文件完整性
 	{
 		pEnv = new GameEnv(pRes);
+		mainEnv = pEnv;
 		return S_OK;
 	}
 	return E_FAIL;
-}
-
-GameEnv* WINAPI GameEnv::GetEnv()
-{
-	return pEnv;
 }
 
 void WINAPI GameEnv::ReleaseEnv()
@@ -184,7 +182,7 @@ BgmLib &GameEnv::GetBGMLib() const
 }
 
 
-//================================
+//=====================================
 //内部检查函数
 //
 static BOOL WINAPI CheckPalLib(const tstring whichPath, PPalLib &pal)

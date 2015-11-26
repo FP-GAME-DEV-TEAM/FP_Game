@@ -3,7 +3,6 @@
 #include "FPModule.h"
 #include "FPDataType.h"
 
-HMODULE dllModule = NULL;
 GameEnv *mainEnv = NULL;
 
 BOOL APIENTRY DllMain(
@@ -15,9 +14,8 @@ BOOL APIENTRY DllMain(
 	TCHAR exeFilePath[MAX_PATH + 1] = {0};
 	switch(dwReason)
 	{
-
 	case DLL_PROCESS_ATTACH:
-		dllModule = hModule;
+		DisableThreadLibraryCalls(hModule);
 #ifdef FP_MODULE_DEBUG
 		_tcscpy(exeFilePath, FP_DEBUG_PATH); //使用调试路径
 #else
@@ -27,13 +25,12 @@ BOOL APIENTRY DllMain(
 		if (S_OK == GameEnv::InitEnv(exeFilePath)) //初始化游戏资源环境
 		{
 			FP_DEBUG_MSG(_T("Game Env has been initialized.\n"));
-			mainEnv = GameEnv::GetEnv();
 		}
 		break;
 
 	case DLL_PROCESS_DETACH:
-		mainEnv->ReleaseEnv();
-		mainEnv = NULL;
+		GameEnv::ReleaseEnv();
+		mainEnv = NULL; // Must set null
 		FP_DEBUG_MSG(_T("Game Env has been released.\n"));
 		break;
 

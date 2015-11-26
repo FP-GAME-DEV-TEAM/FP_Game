@@ -4,10 +4,8 @@
 
 #include "stdafx.h"
 #include "FPModule.h"
-#include "FPDataType.h"
-#include "FPFunction.h"
 
-//================================
+//=====================================
 //初始化图形模块
 //
 

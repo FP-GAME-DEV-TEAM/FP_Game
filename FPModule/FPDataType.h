@@ -10,7 +10,7 @@
 #pragma once
 
 
-//================================
+//=====================================
 // Graphics Data Types
 //
 
@@ -69,49 +69,6 @@ typedef struct tagAnimeData
 } AnimeData;
 
 
-//================================
-// Error Data Types
-//
-
-//资源错误类型
-typedef enum tagErrorRes
-{
-	ERROR_RES_Unknown = 0, //未知错误
-	ERROR_RES_MissingPath = 1, //路径异常
-	ERROR_RES_MissingFile = 2, //文件丢失
-	ERROR_RES_DuplicatedFile = 3, //有类似文件名存在
-	ERROR_RES_VersionMismatch = 4, //版本匹配不通过
-	ERROR_RES_FilesSumMismatch = 5, //文件个数不匹配
-	ERROR_RES_DateTimeMismatch = 6, //修改日期匹配不通过
-	ERROR_RES_DigitalMismatch = 7, //文件校验失败
-} ErrorRes;
-
-//资源错误信息
-typedef struct tagResError
-{
-	ErrorRes error; //资源错误类型
-	LPTSTR func; //错误函数
-	tagResError *next; //下一个错误
-} ResError, *PResError;
-
-//IO错误类型
-typedef enum tagErrorIO
-{
-	ERROR_IO_Unknown = 0, //未知错误
-	ERROR_IO_EOF = 1, //读到文件尾
-	ERROR_IO_Limited = 2, //权限限制错误
-	ERROR_IO_Timeout = 3, //异步超时
-} ErrorIO;
-
-//IO错误信息
-typedef struct tagIOError
-{
-	ErrorIO error; //IO错误类型
-	LPTSTR func; //错误函数
-	tagIOError *next; //下一个错误
-} IOError, *PIOError;
-
-
 //游戏资源环境管理类
 class GameEnv : public IGameEnv
 {
@@ -122,12 +79,12 @@ private:
 
 	GameEnv(PGameRes pRes); //私有构造方法
 	~GameEnv(); //析构函数
+
 	static PGameRes WINAPI OpenResFiles(const tstring whichPath); //判断目录是否为游戏资源的根目录
 	static HRESULT WINAPI ValidateFile(HANDLE hFile); //校验指定文件
 
 public:
 	static HRESULT WINAPI InitEnv(const tstring whichPath); //初始化对象
-	static GameEnv* WINAPI GetEnv(); //得到资源检查对象的实例(*)
 	static void WINAPI ReleaseEnv(); //销毁游戏全部资源对象
 
 	LPCTSTR GetRootPath() const; //得到游戏根目录

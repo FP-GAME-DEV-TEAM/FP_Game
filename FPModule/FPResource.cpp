@@ -68,12 +68,7 @@ BOOL GameEnv::LoadPalette(PalLib& pal)
 	buffer = new BYTE[FP_FILE_SIZE_PAL];
 	for(n=0; n<FP_FILE_COUNT_PAL; n++)
 	{
-		tmpPath = filePath + pal.fileList[n];
-		hFile = CreateFile(tmpPath.c_str(), GENERIC_READ, FILE_SHARE_READ, 
-			NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-		FileReadData(hFile, false, 0, FP_FILE_SIZE_PAL, buffer);
-		
-		CloseHandle(hFile);
+		// to do
 	}
 	
 	delete buffer;

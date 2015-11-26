@@ -9,7 +9,6 @@
 #include "stdafx.h"
 #include "FPModule.h"
 
-
 //¼ì²éÄ¿Â¼
 BOOL WINAPI IsFolderExist(tstring whichPath)
 {

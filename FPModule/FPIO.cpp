@@ -8,36 +8,40 @@
 
 #include "stdafx.h"
 #include "FPModule.h"
+#include "FPFunction.h"
 
-
-VOID CALLBACK ReadCompleted(DWORD dwError, DWORD dwCount, LPOVERLAPPED lpOver)
+UINT CALLBACK BinProc(HANDLE param)
 {
-	return;
+	HANDLE hStartEvent = param;
+	MSG msg;
+	PeekMessage(&msg, NULL, WM_USER, WM_USER, PM_NOREMOVE);
+	// Set thread start event
+	if (!SetEvent(hStartEvent))
+	{
+		FP_DEBUG_MSG(_T("set start event failed, errno:%d\n"), GetLastError());
+		return 1;
+	}
+	// Main bin thread loop
+	while (true)
+	{
+		if (GetMessage(&msg, NULL, FPMSG_BASE, FPMSG_END))
+		{
+			switch (msg.message)
+			{
+			case FPMSG_THREAD_START:
+				// Check IO file status
+				break;
+			default:
+				break;
+			}
+		}
+	}
+	return 0;
 }
 
 
 BOOL WINAPI FileReadData(HANDLE hFile, BOOL isAsync, DWORD dwOffset, LONG dwSize, LPVOID lpBuffer)
 {
-	BOOL bResult;
-	DWORD dwCount = 0;
-	DWORD dwError = 0;
-	LPOVERLAPPED lpOver;
-	if(isAsync)
-	{
-		lpOver = new OVERLAPPED();
-		memset(lpOver, 0, sizeof(lpOver));
-		lpOver->Offset = dwOffset;
-		lpOver->hEvent = lpBuffer;
-		ReadFileEx(hFile, lpBuffer, dwSize, lpOver, ReadCompleted);
-	}
-	else
-	{
-		bResult = ReadFile(hFile, lpBuffer, dwSize, &dwCount, NULL);
-		if(bResult && dwCount == 0)
-		{
-			
-		}
-	}
 	return FALSE;
 }
 
