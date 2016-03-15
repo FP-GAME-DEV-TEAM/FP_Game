@@ -7,7 +7,7 @@
 ********************************/
 
 #include "stdafx.h"
-#include "FPModule.h"
+#include "FPDataType.h"
 
 //检查目录
 BOOL WINAPI IsFolderExist(tstring whichPath)
@@ -24,7 +24,7 @@ BOOL WINAPI IsFolderExist(tstring whichPath)
 }
 
 //获得一个路径字符串
-LPTSTR WINAPI NewPath(const tstring &str, const int size)
+LPTSTR WINAPI NewPathString(const tstring &str, const int size)
 {
 	LPTSTR tmp;
 	int len = str.length();

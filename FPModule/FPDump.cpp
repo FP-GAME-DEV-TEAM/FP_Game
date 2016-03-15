@@ -7,7 +7,7 @@
 ********************************/
 
 #include "stdafx.h"
-#include "FPModule.h"
+#include "FPDataType.h"
 #include "FPDump.h"
 
 //×ÊÔ´´íÎóÁ´±í

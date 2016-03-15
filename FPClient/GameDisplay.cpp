@@ -39,7 +39,7 @@ HRESULT InitGameDisplay(BOOL flag)
 	}
 	else if (fWindowed == STAGE_MODE_FULLSCREEN)
 	{
-		dwRet = CreateFullScreenDisplay(hMainWnd, STAGE_DEFAULT_WIDTH, STAGE_DEFAULT_HEIGHT, STAGE_BPP_INDEX);
+		dwRet = CreateFullScreenDisplay(hMainWnd, STAGE_DEFAULT_WIDTH, STAGE_DEFAULT_HEIGHT, STAGE_BPP_LOW);
 		if (S_OK == dwRet)
 		{
 			fWindowed = FALSE;

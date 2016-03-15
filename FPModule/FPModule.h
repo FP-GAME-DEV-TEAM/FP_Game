@@ -52,20 +52,29 @@
 
 // Start at 0x0400, AKA WM_USER. end with 0x7fff.
 // FP project own message base value
-#define FPMSG_BASE						(WM_USER + 0x0100)
+#define FPMSG_BASE						(WM_USER)
 
 // Thread message
 #define FPMSG_THREAD_START				(FPMSG_BASE + 0x0100)
 #define FPMSG_THREAD_STOP				(FPMSG_BASE + 0x0101)
+#define FPMSG_THREAD_PAUSE				(FPMSG_BASE + 0x0102)
 
-#define FPMSG_IO_BIN_REQ				(FPMSG_BASE + 0x0110)
-#define FPMSG_IO_BIN_RSP				(FPMSG_BASE + 0x0111)
-#define FPMSG_IO_BIN_PAL				(FPMSG_BASE + 0x0112)
+#define FPMSG_IO_READ_IMAGEDATA			(FPMSG_BASE + 0x0200)
+#define FPMSG_IO_READ_IMAGEINFO			(FPMSG_BASE + 0x0201)
+#define FPMSG_IO_READ_ANIMEDATA			(FPMSG_BASE + 0x0202)
+#define FPMSG_IO_READ_ANIMEINFO			(FPMSG_BASE + 0x0203)
+#define FPMSG_IO_READ_PALETTE			(FPMSG_BASE + 0x0205)
 
-#define FPMSG_IO_SND_REQ				(FPMSG_BASE + 0x0120)
-#define FPMSG_IO_SND_RSP				(FPMSG_BASE + 0x0121)
-#define FPMSG_IO_BGM_ON					(FPMSG_BASE + 0x0122)
-#define FPMSG_IO_BGM_OFF				(FPMSG_BASE + 0x0123)
+#define FPMSG_IO_READ_SOUND				(FPMSG_BASE + 0x0210)
+#define FPMSG_IO_READ_MUSIC				(FPMSG_BASE + 0x0211)
+#define FPMSG_IO_READ_MIDI				(FPMSG_BASE + 0x0212)
+
+#define FPMSG_IO_READ_TEXT				(FPMSG_BASE + 0x0220)
+#define FPMSG_IO_READ_USERLOG			(FPMSG_BASE + 0x0221)
+
+#define FPMSG_IO_READ_MAP_PUBLIC		(FPMSG_BASE + 0x0230)
+#define FPMSG_IO_READ_MAP_PRIVATE		(FPMSG_BASE + 0x0231)
+#define FPMSG_IO_READ_MAP_RANDOM		(FPMSG_BASE + 0x0232)
 
 #define FPMSG_END						(WM_USER + 0x0c00 - 1)
 
@@ -83,7 +92,7 @@
 
 #define FP_STORE_PAL_COUNT 256
 #define FP_STORE_PAL_DEFAULT 32
-#define FP_STORE_PAL_SELECTED 224
+#define FP_STORE_PAL_OPTIONAL 224
 
 //相对路径和文件名宏定义
 #define FP_PATH_BIN _T("\\bin") //资源文件相对路径
@@ -158,97 +167,63 @@ typedef enum tagPalette
 
 
 //=====================================
-// Resource Data Types
+// Game Graphics Interface
 //
 
-//背景音乐库
-typedef struct tagBgmLib
+class FP_MODULE_API IGameGraphics
 {
-	LPCTSTR bgmPath; //背景音乐目录，以斜杠结束
-	DWORD sum; //实际音乐文件总数
-	LPCTSTR *fileList; //文件列表
-	LPDWORD crc32; //数据校验
-} BgmLib, *PBgmLib;
+public:
+	virtual LPCVOID GetImageById(int id) const = 0; //通过ID得到图片
+	virtual LPCVOID GetAnimeById(int id) const = 0; //通过ID得到动画
+	virtual HRESULT SwitchPalette(int id) const = 0; //更换调色板
+};
 
-//游戏音效库
-typedef struct tagSndLib
+
+//=====================================
+// Game Audio Interface
+//
+
+class FP_MODULE_API IGameAudio
 {
-	LPCTSTR sndPath; //游戏音效目录，以斜杠结束
-	DWORD sum; //实际音效文件总数
-	LPCTSTR *fileList; //文件列表
-	LPDWORD crc32; //数据校验
-} SndLib, *PSndLib;
+public:
+	virtual LPCVOID GetWavDataById(LPCTSTR name) const = 0; //通过名称得到.wav文件数据
+	virtual LPCVOID GetMp3DataById(LPCTSTR name) const = 0; //通过名称得到.mp3文件数据
+	
+};
 
-//调色板库
-typedef struct tagPalLib
+
+//=====================================
+// Game Text Interface
+//
+
+class FP_MODULE_API IGameText
 {
-	LPCTSTR palPath; //调色板目录，以斜杠结束
-	DWORD sum; //调色板总数
-	LPCTSTR *fileList; //文件列表
-	LPDWORD crc32; //数据校验
-} PalLib, *PPalLib;
+public:
+	virtual LPCTSTR GetTextById(int id) const = 0; //通过ID得到文本
+	virtual LPCTSTR GetUserLogById(int id) const = 0; //通过ID得到用户日志
+};
 
-//二进制资源库
-typedef struct tagBinLib
+
+//=====================================
+// Game Text Interface
+//
+
+class FP_MODULE_API IGameMaps
 {
-	LPCTSTR binPath; //二进制数据目录，以斜杠结束
-	DWORD verGraphic; //图像资源版本号
-	DWORD verAnime; //动画资源版本号
-	LPCTSTR sGraphicInfo; //图像目录文件
-	LPCTSTR sGraphicData; //图像数据文件
-	LPCTSTR sAnimeInfo; //动画目录文件
-	LPCTSTR sAnimeData; //动画数据文件
-	PPalLib pLibPal; //调色板信息
-	PBgmLib pLibBgm; //背景音乐信息
-	PSndLib pLibSnd; //游戏音效信息
-} BinLib, *PBinLib;
+public:
+	virtual LPCVOID GetLocalMapById(int id) const = 0; //通过ID得到本地地图
+	virtual LPCVOID GetRemoteMapById(int id) const = 0; //通过ID得到远程地图
+};
 
 
-//用户数据
-typedef struct tagLocalData
+//=====================================
+// Game Network Interface
+//
+
+class FP_MODULE_API IGameNetwork
 {
-	LPCTSTR userID; //用来指示当前用户
-} LocalData, *PLocalData;
-
-//数据配置资源库
-typedef struct tagDataSet
-{
-	LPCTSTR dataPath; //配置数据目录，以斜杠结束
-	LPCTSTR userID; //用来指示当前用户
-	PLocalData userData; //指向当前用户的本地数据
-} DataSet, *PDataSet;
-
-//地图资源库
-typedef struct tagMapPack
-{
-	LPCTSTR mapPath; //地图目录，以斜杠结束
-	//公共地图
-	//私有地图
-	//随机地图
-} MapPack, *PMapPack;
-
-//游戏资源结构
-typedef struct tagGameRes
-{
-	LPCTSTR rootPath; //游戏根目录，以斜杠结束
-	WORD mainVersion; //游戏主版本
-	WORD subVersion; //游戏子版本
-	PBinLib pBinLib; //二进制资源
-	PDataSet pDataSet; //配置数据资源
-	PMapPack pMapPack; //地图资源
-} GameRes, *PGameRes;
-
-
-//影像链接库
-typedef struct tagGraphicLink
-{
-	HANDLE hGraphicInfo; //图像目录对象
-	HANDLE hGraphicData; //图像数据对象
-	HANDLE hAnimeInfo; //动画目录对象
-	HANDLE hAnimeData; //动画数据对象
-	LPBYTE table_Selected; //可选调色板
-	LPBYTE table_Default; //固定调色板
-} GraphicLink, *PGraphicLink;
+	//unimplemented
+};
 
 
 //=====================================
@@ -262,11 +237,6 @@ public:
 	virtual LPCTSTR GetBinPath() const = 0; //得到游戏数据目录
 	virtual LPCTSTR GetDataPath() const = 0; //得到用户数据目录
 	virtual LPCTSTR GetMapPath() const = 0; //得到地图目录
-	virtual BinLib &GetBinLib() const = 0; //得到二进制库引用
-	virtual PalLib &GetPaletteLib() const = 0; //得到调色板库引用
-	virtual SndLib &GetSoundLib() const = 0; //得到音效库引用
-	virtual BgmLib &GetBGMLib() const = 0; //得到背景音乐库引用
-	virtual BOOL LoadPalette(PalLib& pal) = 0; //加载调色板
 };
 
 
@@ -275,20 +245,20 @@ public:
 //
 
 // tstring转大写
-inline tstring WINAPI StrToUpper(const tstring &str)
+inline tstring StrToUpper(const tstring &str)
 {
 	tstring tmp = str;
 	transform(tmp.begin(),tmp.end(),tmp.begin(),toupper);
 	return tmp;
 }
 // tstring转小写
-inline tstring WINAPI StrToLower(const tstring &str)
+inline tstring StrToLower(const tstring &str)
 {
 	tstring tmp = str;
 	transform(tmp.begin(),tmp.end(),tmp.begin(),tolower);
 	return tmp;
 }
 
-LPTSTR WINAPI NewPath(const tstring &str, const int size); //利用不可更改的字符串，得到用户自定长度的字符串
+LPTSTR WINAPI NewPathString(const tstring &str, const int size); //利用不可更改的字符串，得到用户自定长度的字符串
 BOOL WINAPI IsFolderExist(tstring whichPath); //判读目录是否存在，不存在返回FALSE
 HWND WINAPI GetRootWindow(HWND hWnd); //带入任意控件句柄，获得最上层父窗口的句柄

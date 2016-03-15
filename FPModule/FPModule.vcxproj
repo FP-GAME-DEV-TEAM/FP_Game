@@ -96,9 +96,11 @@
       </PrecompiledHeader>
       <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</CompileAsManaged>
     </ClCompile>
+    <ClCompile Include="FPAudio.cpp" />
     <ClCompile Include="FPCheck.cpp" />
     <ClCompile Include="FPDump.cpp" />
-    <ClCompile Include="FPGraphic.cpp" />
+    <ClCompile Include="FPEnv.cpp" />
+    <ClCompile Include="FPGraphics.cpp" />
     <ClCompile Include="FPIO.cpp" />
     <ClCompile Include="FPResource.cpp" />
     <ClCompile Include="FPThread.cpp" />

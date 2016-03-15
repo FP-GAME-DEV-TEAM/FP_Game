@@ -7,185 +7,10 @@
 ********************************/
 
 #include "stdafx.h"
-#include "FPModule.h"
 #include "FPDataType.h"
 #include "FPDump.h"
 
-//资源检查函数声明
-static BOOL WINAPI CheckPalLib(const tstring whichPath, PPalLib &pal);
-static BOOL WINAPI CheckBinLib(const tstring whichPath, PBinLib &pLib);
-static BOOL WINAPI CheckDataSet(const tstring whichPath, PDataSet &pLib);
-
-extern GameEnv *mainEnv;
-
-//=====================================
-// GameEnv类中，资源检查部分的实现
-//
-
-GameEnv *GameEnv::pEnv = NULL;
-
-GameEnv::GameEnv(const PGameRes pRes)
-{
-	tstring path;
-	pGameRes = pRes;
-	//生成二进制资源库
-	pGraphic = new GraphicLink();
-	path = pRes->pBinLib->binPath;
-	pGraphic->hGraphicInfo = CreateFile((path + pRes->pBinLib->sGraphicInfo).c_str(), GENERIC_READ, FILE_SHARE_READ,
-		NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-	pGraphic->hGraphicData = CreateFile((path + pRes->pBinLib->sGraphicData).c_str(), GENERIC_READ, FILE_SHARE_READ,
-		NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-	pGraphic->hAnimeInfo = CreateFile((path + pRes->pBinLib->sAnimeInfo).c_str(), GENERIC_READ, FILE_SHARE_READ,
-		NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-	pGraphic->hAnimeData = CreateFile((path + pRes->pBinLib->sAnimeData).c_str(), GENERIC_READ, FILE_SHARE_READ,
-		NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-}
-
-GameEnv::~GameEnv()
-{
-	//释放影像资源句柄
-	if (this->pGraphic)
-	{
-		if (this->pGraphic->hGraphicInfo != NULL && this->pGraphic->hGraphicInfo != INVALID_HANDLE_VALUE)
-			CloseHandle(this->pGraphic->hGraphicInfo);
-		if (this->pGraphic->hGraphicData != NULL && this->pGraphic->hGraphicData != INVALID_HANDLE_VALUE)
-			CloseHandle(this->pGraphic->hGraphicData);
-		if (this->pGraphic->hAnimeInfo != NULL && this->pGraphic->hAnimeInfo != INVALID_HANDLE_VALUE)
-			CloseHandle(this->pGraphic->hAnimeInfo);
-		if (this->pGraphic->hAnimeData != NULL && this->pGraphic->hAnimeData != INVALID_HANDLE_VALUE)
-			CloseHandle(this->pGraphic->hAnimeData);
-	}
-}
-
-PGameRes WINAPI GameEnv::OpenResFiles(const tstring whichPath)
-{
-	tstring subPath;
-	PGameRes pRes = new GameRes();
-	ZeroMemory(pRes, sizeof(GameRes));
-	pRes->rootPath = NewPath(whichPath, MAX_PATH);
-	//检查二进制文件
-	subPath = whichPath + FP_PATH_BIN;
-	pRes->pBinLib = new BinLib();
-	ZeroMemory(pRes->pBinLib, sizeof(BinLib));
-	if (!CheckBinLib(subPath, pRes->pBinLib))
-	{
-		SAFE_DELETE(pRes->pBinLib);
-		SAFE_DELETE(pRes);
-		return NULL;
-	}
-	//检查配置文件
-	subPath = whichPath + FP_PATH_DAT;
-	pRes->pDataSet = new DataSet();
-	ZeroMemory(pRes->pDataSet, sizeof(DataSet));
-	if (!CheckDataSet(subPath, pRes->pDataSet))
-	{
-		SAFE_DELETE(pRes);
-		return NULL;
-	}
-	return pRes;
-}
-
-HRESULT WINAPI GameEnv::ValidateFile(HANDLE hFile)
-{
-	return FALSE;
-}
-
-HRESULT WINAPI GameEnv::InitEnv(const tstring whichPath)
-{
-	if (NULL != pEnv) //检查是否已经初始化
-	{
-		mainEnv = pEnv;
-		return E_HANDLE;
-	}
-	if (_T('\\') == whichPath[whichPath.length() - 1]) //检查结尾反斜杠符
-	{
-		ErrorHandler(ERROR_RES_Unknown, _T(__FUNCTION__));
-		return E_FAIL;
-	}
-	if (!IsFolderExist(whichPath)) //检查路径是否存在
-	{
-		ErrorHandler(ERROR_RES_MissingPath, _T(__FUNCTION__));
-		return E_FAIL;
-	}
-	PGameRes pRes = OpenResFiles(whichPath);
-	if (NULL != pRes) //检查资源文件完整性
-	{
-		pEnv = new GameEnv(pRes);
-		mainEnv = pEnv;
-		return S_OK;
-	}
-	return E_FAIL;
-}
-
-void WINAPI GameEnv::ReleaseEnv()
-{
-	// Free graphics data
-	SAFE_DELETE(pEnv->pGraphic);
-	// Free user data
-	SAFE_DELETE(pEnv->pGameRes->pDataSet);
-	// Free palette data
-	SAFE_DELETE(pEnv->pGameRes->pBinLib->pLibPal->palPath);
-	SAFE_DELETE_ARRAY(pEnv->pGameRes->pBinLib->pLibPal->fileList);
-	SAFE_DELETE(pEnv->pGameRes->pBinLib->pLibPal);
-	// Free bin data
-	SAFE_DELETE(pEnv->pGameRes->pBinLib->binPath);
-	SAFE_DELETE(pEnv->pGameRes->pBinLib->sAnimeData);
-	SAFE_DELETE(pEnv->pGameRes->pBinLib->sAnimeInfo);
-	SAFE_DELETE(pEnv->pGameRes->pBinLib->sGraphicData);
-	SAFE_DELETE(pEnv->pGameRes->pBinLib->sGraphicInfo);
-	SAFE_DELETE(pEnv->pGameRes->pBinLib);
-	// Free game resource
-	SAFE_DELETE(pEnv->pGameRes);
-	// Free main environment
-	SAFE_DELETE(pEnv);
-}
-
-LPCTSTR GameEnv::GetRootPath() const
-{
-	return this->pGameRes->rootPath;
-}
-
-LPCTSTR GameEnv::GetBinPath() const
-{
-	return this->pGameRes->pBinLib->binPath;
-}
-
-LPCTSTR GameEnv::GetDataPath() const
-{
-	return this->pGameRes->pDataSet->dataPath;
-}
-
-LPCTSTR GameEnv::GetMapPath() const
-{
-	return this->pGameRes->pMapPack->mapPath;
-}
-
-
-BinLib &GameEnv::GetBinLib() const
-{
-	return *(this->pGameRes->pBinLib);
-}
-
-PalLib &GameEnv::GetPaletteLib() const
-{
-	return *(this->pGameRes->pBinLib->pLibPal);
-}
-
-SndLib &GameEnv::GetSoundLib() const
-{
-	return *(this->pGameRes->pBinLib->pLibSnd);
-}
-
-BgmLib &GameEnv::GetBGMLib() const
-{
-	return *(this->pGameRes->pBinLib->pLibBgm);
-}
-
-
-//=====================================
-//内部检查函数
-//
-static BOOL WINAPI CheckPalLib(const tstring whichPath, PPalLib &pal)
+BOOL WINAPI CheckPalLib(const tstring whichPath, PPalLib &pal)
 {
 	HANDLE hFile;
 	WIN32_FIND_DATA ffd;
@@ -228,7 +53,7 @@ static BOOL WINAPI CheckPalLib(const tstring whichPath, PPalLib &pal)
 			}
 			else
 			{
-				pal->fileList[n] = NewPath(ffd.cFileName, FP_FILE_NAME_SIZE);
+				pal->fileList[n] = NewPathString(ffd.cFileName, FP_FILE_NAME_SIZE);
 				pal->sum++;
 				continue;
 			}
@@ -248,12 +73,12 @@ static BOOL WINAPI CheckPalLib(const tstring whichPath, PPalLib &pal)
 		SAFE_DELETE_ARRAY(pal->fileList);
 		return FALSE;
 	}
-	pal->palPath = NewPath(whichPath, MAX_PATH);
+	pal->palPath = NewPathString(whichPath, MAX_PATH);
 
 	return TRUE;
 }
 
-static BOOL WINAPI CheckBinLib(const tstring whichPath, PBinLib &bin)
+BOOL WINAPI CheckBinLib(const tstring whichPath, PBinLib &bin)
 {
 	HANDLE hFile;
 	WIN32_FIND_DATA ffd;
@@ -285,7 +110,7 @@ static BOOL WINAPI CheckBinLib(const tstring whichPath, PBinLib &bin)
 			FindClose(hFile);
 			return FALSE;
 		}
-		bin->sGraphicInfo = NewPath(ffd.cFileName, FP_FILE_NAME_SIZE);
+		bin->sGraphicInfo = NewPathString(ffd.cFileName, FP_FILE_NAME_SIZE);
 		FindClose(hFile);
 	}
 	else
@@ -311,7 +136,7 @@ static BOOL WINAPI CheckBinLib(const tstring whichPath, PBinLib &bin)
 			FindClose(hFile);
 			return FALSE;
 		}
-		bin->sGraphicData = NewPath(ffd.cFileName, FP_FILE_NAME_SIZE);
+		bin->sGraphicData = NewPathString(ffd.cFileName, FP_FILE_NAME_SIZE);
 		FindClose(hFile);
 	}
 	else
@@ -344,7 +169,7 @@ static BOOL WINAPI CheckBinLib(const tstring whichPath, PBinLib &bin)
 			FindClose(hFile);
 			return FALSE;
 		}
-		bin->sAnimeInfo = NewPath(ffd.cFileName, FP_FILE_NAME_SIZE);
+		bin->sAnimeInfo = NewPathString(ffd.cFileName, FP_FILE_NAME_SIZE);
 		FindClose(hFile);
 	}
 	else
@@ -370,7 +195,7 @@ static BOOL WINAPI CheckBinLib(const tstring whichPath, PBinLib &bin)
 			FindClose(hFile);
 			return FALSE;
 		}
-		bin->sAnimeData = NewPath(ffd.cFileName, FP_FILE_NAME_SIZE);
+		bin->sAnimeData = NewPathString(ffd.cFileName, FP_FILE_NAME_SIZE);
 		FindClose(hFile);
 	}
 	else
@@ -384,7 +209,7 @@ static BOOL WINAPI CheckBinLib(const tstring whichPath, PBinLib &bin)
 		ErrorHandler(ERROR_RES_VersionMismatch, _T(__FUNCTION__));
 		return FALSE;
 	}
-	bin->binPath = NewPath(whichPath, MAX_PATH);
+	bin->binPath = NewPathString(whichPath, MAX_PATH);
 	bin->verGraphic = nVerGraph;
 	bin->verAnime = nVerAnime;
 
@@ -402,8 +227,7 @@ static BOOL WINAPI CheckBinLib(const tstring whichPath, PBinLib &bin)
 	return TRUE;
 }
 
-static BOOL WINAPI CheckDataSet(const tstring whichPath, PDataSet &data)
+BOOL WINAPI CheckDataSet(const tstring whichPath, PDataSet &data)
 {
 	return TRUE;
 }
-

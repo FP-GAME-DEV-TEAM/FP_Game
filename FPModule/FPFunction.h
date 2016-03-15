@@ -15,7 +15,7 @@
 //
 
 FP_MODULE_API VOID WINAPI LoadGameEnv(IGameEnv **IEnv); //初始化图像模块
-FP_MODULE_API BOOL WINAPI InitGraphic(const IGameEnv &IEnv); //初始化图像模块
+FP_MODULE_API BOOL WINAPI InitGraphics(const IGameEnv &IEnv); //初始化图像模块
 
 
 //=====================================

@@ -7,19 +7,17 @@
 ********************************/
 
 #include "stdafx.h"
-#include "FPModule.h"
 #include "FPDataType.h"
 #include "FPFunction.h"
 
 //图像库数据缓存
 static GraphicInfo *gListGraphic; //图像目录数据
 static AnimeInfo *gListAnime; //动画目录数据
-//static HashMap_Dict gDictGraphic; //图像目录字典
-//static HashMap_Dict gDictAnime; //动画目录字典
-//static TreeMap_Cache gCacheGraphic; //图像数据缓存
-//static TreeMap_Cache gCacheAnime; //动画数据缓存
+
 static DWORD gPaletteDefault[FP_STORE_PAL_DEFAULT]; //固定调色板数组表
-static DWORD gPaletteSelected[FP_FILE_COUNT_PAL][FP_STORE_PAL_SELECTED]; //可变调色板数组表
+static DWORD gPaletteSelected[FP_FILE_COUNT_PAL][FP_STORE_PAL_OPTIONAL]; //可变调色板数组表
+
+extern UINT dwBinThreadId;
 
 BOOL GameEnv::LoadPalette(PalLib& pal)
 {
@@ -68,7 +66,7 @@ BOOL GameEnv::LoadPalette(PalLib& pal)
 	buffer = new BYTE[FP_FILE_SIZE_PAL];
 	for(n=0; n<FP_FILE_COUNT_PAL; n++)
 	{
-		// to do
+		PostThreadMessage(dwBinThreadId, FPMSG_IO_READ_PALETTE, 0, 0);
 	}
 	
 	delete buffer;

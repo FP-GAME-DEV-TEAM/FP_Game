@@ -178,7 +178,7 @@ HRESULT GameInit()
 		{
 			return E_FAIL;
 		}
-		FP_DEBUG_MSG(_T("Game Env has been loaded: %s\n"), mainEnv->GetBinPath());
+		FP_DEBUG_MSG(_T("Game Env has been loaded: %s\n"), mainEnv->GetRootPath());
 	}
 	// Init DirectDraw & prepare for game display
 	if (NULL == lpdd)
@@ -194,7 +194,7 @@ HRESULT GameInit()
 			return E_FAIL;
 		}
 	}
-	FP_DEBUG_MSG(_T("Game Init Done!\n"));
+	FP_DEBUG_MSG(_T("Game Started!\n"));
 	return S_OK;
 }
 

@@ -15,7 +15,6 @@
 #include <windows.h>
 #include <objbase.h>
 #include <process.h>
-#include <ddraw.h>
 
 // C RunTime Header Files
 #include <stdio.h>
@@ -38,6 +37,7 @@
 #define FP_DEBUG_PATH _T("F:\\Programming\\CGames\\FPMainWorkspace\\GameTest\\Null.exe")
 #endif 
 
+/* This macro is for project debugging */
 #ifndef FP_PROJECT_DEBUG
 #define FP_PROJECT_DEBUG
 #endif

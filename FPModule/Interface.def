@@ -4,4 +4,4 @@ EXPORTS
 
 ;Functions
 LoadGameEnv @ 1;
-InitGraphic @ 2;
+InitGraphics @ 2;

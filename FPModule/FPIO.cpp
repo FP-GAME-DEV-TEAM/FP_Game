@@ -7,7 +7,7 @@
 ********************************/
 
 #include "stdafx.h"
-#include "FPModule.h"
+#include "FPDataType.h"
 #include "FPFunction.h"
 
 UINT CALLBACK BinProc(HANDLE param)
@@ -31,6 +31,8 @@ UINT CALLBACK BinProc(HANDLE param)
 			case FPMSG_THREAD_START:
 				// Check IO file status
 				break;
+			case FPMSG_IO_READ_ANIMEDATA:
+				break;
 			default:
 				break;
 			}
@@ -40,12 +42,12 @@ UINT CALLBACK BinProc(HANDLE param)
 }
 
 
-BOOL WINAPI FileReadData(HANDLE hFile, BOOL isAsync, DWORD dwOffset, LONG dwSize, LPVOID lpBuffer)
+BOOL __fastcall FileReadData(HANDLE hFile, DWORD dwOffset, LONG dwSize, LPVOID lpBuffer)
 {
 	return FALSE;
 }
 
-BOOL WINAPI FileWriteData(HANDLE hFile, BOOL isAsync, DWORD dwOffset, LPVOID lpBuffer, LONG dwSize)
+BOOL __fastcall FileWriteData(HANDLE hFile, DWORD dwOffset, LPVOID lpBuffer, LONG dwSize)
 {
 	return FALSE;
 }
