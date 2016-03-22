@@ -166,6 +166,17 @@ typedef enum tagPalette
 #define FP_FILE_SUFFIX_WAV _T(".wav") //音效文件后缀
 
 
+//可以直接显示的图片
+typedef struct tagFPImage
+{
+	LONG width; //图片的宽度
+	LONG height; //图片的高度
+	LONG offsetX; //图片显示时的X轴偏移
+	LONG offsetY; //图片显示时的Y轴偏移
+	LPBYTE *pData; //图片像素填充数据
+} FPImage, *PFPImage;
+
+
 //=====================================
 // Game Graphics Interface
 //
@@ -173,9 +184,9 @@ typedef enum tagPalette
 class FP_MODULE_API IGameGraphics
 {
 public:
-	virtual LPCVOID GetImageById(int id) const = 0; //通过ID得到图片
-	virtual LPCVOID GetAnimeById(int id) const = 0; //通过ID得到动画
-	virtual HRESULT SwitchPalette(int id) const = 0; //更换调色板
+	virtual HRESULT GetImageById(LONG id, LPVOID pData) = 0; //通过ID得到图片
+	virtual HRESULT GetAnimeById(LONG id, LPVOID pData) = 0; //通过ID得到动画
+	virtual HRESULT SwitchPalette(LONG id) = 0; //更换调色板
 };
 
 
@@ -243,6 +254,8 @@ public:
 //=====================================
 // Utility API
 //
+
+class MemoryStream;
 
 // tstring转大写
 inline tstring StrToUpper(const tstring &str)

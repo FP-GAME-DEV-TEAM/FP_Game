@@ -20,7 +20,7 @@ RECT rcWindow;									// Rect of the game window
 RECT rcViewport;								// Rect of the game viewport
 DWORD dwLastTick;								// Time of last logical frame displayed
 
-IGameEnv *mainEnv = NULL;						// Main game resource interface
+IGameEnv *gameEnv = NULL;						// Main game resource interface
 
 // Define game resource interface
 typedef VOID(WINAPI *ICreateEnv)(IGameEnv **IEnv);
@@ -170,15 +170,15 @@ HRESULT GameLoop()
 HRESULT GameInit()
 {
 	// Load game resources
-	if (NULL == mainEnv)
+	if (NULL == gameEnv)
 	{
 		ICreateEnv CreateEnv = (ICreateEnv)GetProcAddress(hRcModule, "LoadGameEnv");
-		CreateEnv(&mainEnv);
-		if (NULL == mainEnv)
+		CreateEnv(&gameEnv);
+		if (NULL == gameEnv)
 		{
 			return E_FAIL;
 		}
-		FP_DEBUG_MSG(_T("Game Env has been loaded: %s\n"), mainEnv->GetRootPath());
+		FP_DEBUG_MSG(_T("Game Env has been loaded: %s\n"), gameEnv->GetRootPath());
 	}
 	// Init DirectDraw & prepare for game display
 	if (NULL == lpdd)
@@ -201,7 +201,7 @@ HRESULT GameInit()
 HRESULT GameExit()
 {
 	// Destroy game display
-	mainEnv = NULL;
+	gameEnv = NULL;
 	if (lpdd)
 	{
 		lpdd->SetCooperativeLevel(hMainWnd, DDSCL_NORMAL);

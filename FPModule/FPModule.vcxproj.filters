@@ -68,6 +68,9 @@
     <ClInclude Include="FPDump.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="FPUtility.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />

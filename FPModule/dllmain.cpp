@@ -29,7 +29,6 @@ BOOL APIENTRY DllMain(
 
 	case DLL_PROCESS_DETACH:
 		GameEnv::CloseEnv();
-		mainEnv = NULL; // Must set null
 		FP_DEBUG_MSG(_T("Game Env has been closed.\n"));
 		break;
 

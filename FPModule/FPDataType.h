@@ -9,7 +9,6 @@
 
 #pragma once
 
-
 #include "FPModule.h"
 
 //=====================================
@@ -156,6 +155,40 @@ typedef struct tagGameRes
 
 
 //=====================================
+// IO Data Types
+//
+
+typedef struct tagIOReqItem
+{
+	union
+	{
+		DWORD offset;
+		LPVOID ptr;
+	};
+	union
+	{
+		DWORD size;
+		LONG index;
+	};
+} IOReqItem, *PIOReqItem;
+
+typedef struct tagIORspItem
+{
+	BOOL isCompleted;
+	DWORD maxSize;
+	LPVOID *pData;
+} IORspItem, *PIORspItem;
+
+typedef struct tagIOList
+{
+	LONG count;
+	PIOReqItem pReqList;
+	PIORspItem pRspList;
+} IOItem, *PIOItem;
+
+
+
+//=====================================
 // Interface Implements Data Types
 //
 
@@ -163,19 +196,27 @@ typedef struct tagGameRes
 class GameGraphics : public IGameGraphics
 {
 private:
+	static GameGraphics *pInstance; //单例对象
+
 	HANDLE hGraphicInfo; //图像目录对象
 	HANDLE hGraphicData; //图像数据对象
 	HANDLE hAnimeInfo; //动画目录对象
 	HANDLE hAnimeData; //动画数据对象
 	PALETTEENTRY pPalette[FP_STORE_PAL_COUNT]; //当前调色板
 
-public:
-	GameGraphics(PBinLib pBin); //构造函数
-	~GameGraphics(); //析构函数
+	std::map<LONG, LPVOID> graphicCache;
 
-	LPCVOID GetImageById(int id) const; //通过ID得到图片
-	LPCVOID GetAnimeById(int id) const; //通过ID得到动画
-	HRESULT SwitchPalette(int id) const; //更换调色板
+	GameGraphics(); //构造函数
+	virtual ~GameGraphics(void); //析构函数
+
+public:
+	static HRESULT WINAPI Create(const PBinLib pBin);
+	static VOID WINAPI Destroy();
+
+	HANDLE GetFileHandle(int type) const;
+	HRESULT GetImageById(LONG id, LPVOID pData); //通过ID得到图片
+	HRESULT GetAnimeById(LONG id, LPVOID pData); //通过ID得到动画
+	HRESULT SwitchPalette(LONG id); //更换调色板
 };
 
 
@@ -192,8 +233,8 @@ public:
 class GameText : public IGameText
 {
 public:
-	LPCTSTR GetTextById(int id) const; //通过ID得到文本
-	LPCTSTR GetUserLogById(int id) const; //通过ID得到用户日志
+	LPCTSTR GetTextById(LONG id) const; //通过ID得到文本
+	LPCTSTR GetUserLogById(LONG id) const; //通过ID得到用户日志
 };
 
 
@@ -201,8 +242,8 @@ public:
 class GameMaps : public IGameMaps
 {
 public:
-	LPCVOID GetLocalMapById(int id) const; //通过ID得到本地地图
-	LPCVOID GetRemoteMapById(int id) const; //通过ID得到远程地图
+	LPCVOID GetLocalMapById(LONG id) const; //通过ID得到本地地图
+	LPCVOID GetRemoteMapById(LONG id) const; //通过ID得到远程地图
 };
 
 
@@ -217,16 +258,12 @@ class GameNetwork : public IGameNetwork
 class GameEnv : public IGameEnv
 {
 private:
-	static GameEnv *pEnv; //单例对象
+	static GameEnv *pInstance; //单例游戏资源对象
+
 	PGameRes pGameRes; //游戏基本信息
-	GameGraphics *pGraphics; //游戏图像资源
-	GameAudio *pAudio; //游戏声音资源
-	GameText *pText; //游戏文本资源
-	GameMaps *pMaps; //游戏地图资源
-	GameNetwork *pNetwork; //游戏网络资源
 
 	GameEnv(const PGameRes pRes); //私有构造方法
-	~GameEnv(); //析构函数
+	virtual ~GameEnv(void); //析构函数
 
 	static PGameRes WINAPI OpenResFiles(const tstring whichPath); //判断目录是否为游戏资源的根目录
 	static HRESULT WINAPI ValidateFile(HANDLE hFile); //校验指定文件
@@ -241,11 +278,10 @@ protected:
 
 public:
 	static HRESULT WINAPI OpenEnv(const tstring whichPath); //载入全部资源引用并打开对象
-	static void WINAPI CloseEnv(); //卸载全部资源引用并关闭对象
+	static VOID WINAPI CloseEnv(); //卸载全部资源引用并关闭对象
 
 	LPCTSTR GetRootPath() const; //得到游戏根目录
 	LPCTSTR GetBinPath() const; //得到游戏数据目录
 	LPCTSTR GetDataPath() const; //得到用户数据目录
 	LPCTSTR GetMapPath() const; //得到地图目录
 };
-

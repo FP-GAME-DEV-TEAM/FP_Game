@@ -21,19 +21,20 @@ GameEnv *mainEnv = NULL;
 // GameEnv类中，资源检查部分的实现
 //
 
-GameEnv *GameEnv::pEnv = NULL;
+GameEnv *GameEnv::pInstance = NULL;
 
 GameEnv::GameEnv(const PGameRes pRes)
 {
 	pGameRes = pRes;
 	//生成图像资源库
-	pGraphics = new GameGraphics(pRes->pBinLib);
+	GameGraphics::Create(pGameRes->pBinLib);
 }
 
 GameEnv::~GameEnv()
 {
-	// Free graphics interface
-	SAFE_DELETE(pEnv->pGraphics);
+	// Destroy graphics interface
+	GameGraphics::Destroy();
+	mainEnv = NULL;
 }
 
 PGameRes WINAPI GameEnv::OpenResFiles(const tstring whichPath)
@@ -71,9 +72,9 @@ HRESULT WINAPI GameEnv::ValidateFile(HANDLE hFile)
 
 HRESULT WINAPI GameEnv::OpenEnv(const tstring whichPath)
 {
-	if (NULL != pEnv) //检查是否已经初始化
+	if (NULL != pInstance) //检查是否已经初始化
 	{
-		mainEnv = pEnv;
+		mainEnv = pInstance;
 		return E_HANDLE;
 	}
 	if (_T('\\') == whichPath[whichPath.length() - 1]) //检查结尾反斜杠符
@@ -89,36 +90,36 @@ HRESULT WINAPI GameEnv::OpenEnv(const tstring whichPath)
 	PGameRes pRes = OpenResFiles(whichPath);
 	if (NULL != pRes) //检查资源文件完整性
 	{
-		pEnv = new GameEnv(pRes);
-		mainEnv = pEnv;
+		pInstance = new GameEnv(pRes);
+		mainEnv = pInstance;
 		return S_OK;
 	}
 	return E_FAIL;
 }
 
-void WINAPI GameEnv::CloseEnv()
+VOID WINAPI GameEnv::CloseEnv()
 {
-	if (NULL == pEnv)
+	if (NULL == pInstance)
 	{
 		return;
 	}
 	// Free user data
-	SAFE_DELETE(pEnv->pGameRes->pDataSet);
+	SAFE_DELETE(pInstance->pGameRes->pDataSet);
 	// Free palette data
-	SAFE_DELETE(pEnv->pGameRes->pBinLib->pLibPal->palPath);
-	SAFE_DELETE_ARRAY(pEnv->pGameRes->pBinLib->pLibPal->fileList);
-	SAFE_DELETE(pEnv->pGameRes->pBinLib->pLibPal);
+	SAFE_DELETE(pInstance->pGameRes->pBinLib->pLibPal->palPath);
+	SAFE_DELETE_ARRAY(pInstance->pGameRes->pBinLib->pLibPal->fileList);
+	SAFE_DELETE(pInstance->pGameRes->pBinLib->pLibPal);
 	// Free bin data
-	SAFE_DELETE(pEnv->pGameRes->pBinLib->binPath);
-	SAFE_DELETE(pEnv->pGameRes->pBinLib->sAnimeData);
-	SAFE_DELETE(pEnv->pGameRes->pBinLib->sAnimeInfo);
-	SAFE_DELETE(pEnv->pGameRes->pBinLib->sGraphicData);
-	SAFE_DELETE(pEnv->pGameRes->pBinLib->sGraphicInfo);
-	SAFE_DELETE(pEnv->pGameRes->pBinLib);
+	SAFE_DELETE(pInstance->pGameRes->pBinLib->binPath);
+	SAFE_DELETE(pInstance->pGameRes->pBinLib->sAnimeData);
+	SAFE_DELETE(pInstance->pGameRes->pBinLib->sAnimeInfo);
+	SAFE_DELETE(pInstance->pGameRes->pBinLib->sGraphicData);
+	SAFE_DELETE(pInstance->pGameRes->pBinLib->sGraphicInfo);
+	SAFE_DELETE(pInstance->pGameRes->pBinLib);
 	// Free game resource
-	SAFE_DELETE(pEnv->pGameRes);
+	SAFE_DELETE(pInstance->pGameRes);
 	// Free main environment
-	SAFE_DELETE(pEnv);
+	SAFE_DELETE(pInstance);
 }
 
 LPCTSTR GameEnv::GetRootPath() const
@@ -140,7 +141,6 @@ LPCTSTR GameEnv::GetMapPath() const
 {
 	return this->pGameRes->pMapPack->mapPath;
 }
-
 
 const BinLib &GameEnv::GetBinLib() const
 {

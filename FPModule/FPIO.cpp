@@ -10,6 +10,10 @@
 #include "FPDataType.h"
 #include "FPFunction.h"
 
+extern GameGraphics *mainGraphics;
+
+HRESULT ReadBinData(HANDLE hFile, LPVOID pIn, LPVOID pOut);
+
 UINT CALLBACK BinProc(HANDLE param)
 {
 	HANDLE hStartEvent = param;
@@ -32,6 +36,7 @@ UINT CALLBACK BinProc(HANDLE param)
 				// Check IO file status
 				break;
 			case FPMSG_IO_READ_ANIMEDATA:
+				ReadBinData(mainGraphics->GetFileHandle(1), (LPVOID)msg.wParam, (LPVOID)msg.lParam);
 				break;
 			default:
 				break;
@@ -39,6 +44,11 @@ UINT CALLBACK BinProc(HANDLE param)
 		}
 	}
 	return 0;
+}
+
+HRESULT ReadBinData(HANDLE hFile, LPVOID pIn, LPVOID pOut)
+{
+	return S_OK;
 }
 
 

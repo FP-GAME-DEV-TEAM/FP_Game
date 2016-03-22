@@ -27,8 +27,6 @@
 #include <fstream>
 #include <map>
 #include <set>
-#include <hash_map>
-#include <hash_set>
 
 
 /* This macro is for dll debugging */
