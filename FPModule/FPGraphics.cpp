@@ -8,18 +8,20 @@
 
 #include "stdafx.h"
 #include "FPDataType.h"
+#include "FPFunction.h"
 #include "FPDump.h"
 
 GameGraphics *mainGraphics = NULL;
+
+extern GameEnv *mainEnv;
 
 //=====================================
 //初始化图形模块
 //
 
-FP_MODULE_API BOOL WINAPI InitGraphics(const IGameEnv &IEnv)
+FP_MODULE_API VOID WINAPI InitGraphics()
 {
-	LPCTSTR s = IEnv.GetRootPath();
-	return TRUE;
+	GameGraphics::Create(mainEnv->GetBinLib());
 }
 
 GameGraphics *GameGraphics::pInstance = NULL;
@@ -46,21 +48,22 @@ HRESULT WINAPI GameGraphics::Create(const PBinLib pBin)
 		mainGraphics = pInstance;
 		return E_HANDLE;
 	}
-	if (NULL != pBin) //检查BinLib是否有效
+	if (NULL == pBin) //检查BinLib是否有效
 	{
 		ErrorHandler(ERROR_RES_Unknown, _T(__FUNCTION__));
 		return E_FAIL;
 	}
 	pInstance = new GameGraphics();
 	path = pBin->binPath;
+	path += _T("\\");
 	pInstance->hGraphicInfo = CreateFile((path + pBin->sGraphicInfo).c_str(), GENERIC_READ, FILE_SHARE_READ,
-		NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+		NULL, OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, NULL);
 	pInstance->hGraphicData = CreateFile((path + pBin->sGraphicData).c_str(), GENERIC_READ, FILE_SHARE_READ,
-		NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+		NULL, OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, NULL);
 	pInstance->hAnimeInfo = CreateFile((path + pBin->sAnimeInfo).c_str(), GENERIC_READ, FILE_SHARE_READ,
-		NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+		NULL, OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, NULL);
 	pInstance->hAnimeData = CreateFile((path + pBin->sAnimeData).c_str(), GENERIC_READ, FILE_SHARE_READ,
-		NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+		NULL, OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, NULL);
 	if (pInstance->hGraphicInfo == INVALID_HANDLE_VALUE
 		|| pInstance->hGraphicData == INVALID_HANDLE_VALUE
 		|| pInstance->hAnimeInfo == INVALID_HANDLE_VALUE
@@ -81,7 +84,7 @@ VOID WINAPI GameGraphics::Destroy()
 	{
 		return;
 	}
-	//释放影像资源句柄
+	//释放文件资源句柄
 	if (pInstance->hGraphicInfo != NULL && pInstance->hGraphicInfo != INVALID_HANDLE_VALUE)
 		CloseHandle(pInstance->hGraphicInfo);
 	if (pInstance->hGraphicData != NULL && pInstance->hGraphicData != INVALID_HANDLE_VALUE)
@@ -90,29 +93,48 @@ VOID WINAPI GameGraphics::Destroy()
 		CloseHandle(pInstance->hAnimeInfo);
 	if (pInstance->hAnimeData != NULL && pInstance->hAnimeData != INVALID_HANDLE_VALUE)
 		CloseHandle(pInstance->hAnimeData);
+	// Set ptr to null
+	pInstance->hGraphicInfo = NULL;
+	pInstance->hGraphicData = NULL;
+	pInstance->hAnimeInfo = NULL;
+	pInstance->hAnimeData = NULL;
 	// Free main environment
 	SAFE_DELETE(pInstance);
 }
 
-HANDLE GameGraphics::GetFileHandle(int type) const
+HANDLE GameGraphics::GetFileHandle(const int type) const
 {
-	return NULL;
+	HANDLE handle = NULL;
+	switch (type)
+	{
+	case FP_HANDLE_GRAPHIC_DATA:
+		handle = this->hGraphicData;
+		break;
+	case FP_HANDLE_ANIME_DATA:
+		handle = this->hAnimeData;
+		break;
+	case FP_HANDLE_GRAPHIC_INFO:
+		handle = this->hGraphicInfo;
+		break;
+	case FP_HANDLE_ANIME_INFO:
+		handle = this->hAnimeInfo;
+		break;
+	default:
+		break;
+	}
+	return handle;
 }
 
-
-//通过ID得到图片
 HRESULT GameGraphics::GetImageById(LONG id, LPVOID pData)
 {
 	return NULL;
 }
 
-//通过ID得到动画
 HRESULT GameGraphics::GetAnimeById(LONG id, LPVOID pData)
 {
 	return NULL;
 }
 
-//更换调色板
 HRESULT GameGraphics::SwitchPalette(LONG id)
 {
 	return S_OK;

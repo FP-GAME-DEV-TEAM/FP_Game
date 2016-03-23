@@ -19,10 +19,10 @@ static DWORD gPaletteSelected[FP_FILE_COUNT_PAL][FP_STORE_PAL_OPTIONAL]; //¿É±äµ
 
 extern UINT dwBinThreadId;
 
-BOOL GameEnv::LoadPalette(PalLib& pal)
+HRESULT GameEnv::InitPalette()
 {
 	DWORD n,count;
-	tstring filePath = pal.palPath;
+	tstring filePath = this->GetPaletteLib()->palPath;
 	tstring tmpPath;
 	HANDLE hFile;
 	LPBYTE buffer;
@@ -66,9 +66,23 @@ BOOL GameEnv::LoadPalette(PalLib& pal)
 	buffer = new BYTE[FP_FILE_SIZE_PAL];
 	for(n=0; n<FP_FILE_COUNT_PAL; n++)
 	{
-		PostThreadMessage(dwBinThreadId, FPMSG_IO_READ_PALETTE, 0, 0);
+		
 	}
-	
 	delete buffer;
-	return TRUE;
+
+	//²âÊÔ
+	PIOList list = new IOList();
+	list->count = 1;
+	PIOItem *item = new PIOItem[1];
+	*item = new IOItem();
+	ZeroMemory(*item, sizeof(IOItem));
+	item[0]->isCompleted = FALSE;
+	item[0]->offset = 0;
+	item[0]->size = 40;
+	item[0]->pData = new BYTE[40];
+	list->pList = item;
+
+	PostThreadMessage(dwBinThreadId, FPMSG_IO_READ_IMAGEINFO, (WPARAM)list, NULL);
+	
+	return (HRESULT)item[0]->pData;
 }

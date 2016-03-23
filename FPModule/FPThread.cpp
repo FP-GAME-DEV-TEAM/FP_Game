@@ -10,14 +10,12 @@
 #include "FPDataType.h"
 #include "FPFunction.h"
 
-typedef UINT(CALLBACK *FP_THREAD_ROUTINE)(LPVOID);
-
 /* Bin thread and the relevants */
 HANDLE hBinThread = NULL;
 UINT dwBinThreadId = 0;
 FP_THREAD_ROUTINE lpBinCallback;
 
-HRESULT StartIOThreads(PGameRes pRes)
+HRESULT WINAPI StartIOThreads()
 {
 	//check if the IO threads has been started.
 	DWORD dwExitCode = 0;

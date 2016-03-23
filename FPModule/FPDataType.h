@@ -78,7 +78,7 @@ typedef struct tagAnimeData
 //背景音乐库
 typedef struct tagBgmLib
 {
-	LPCTSTR bgmPath; //背景音乐目录，以斜杠结束
+	LPCTSTR bgmPath; //背景音乐目录
 	DWORD sum; //实际音乐文件总数
 	LPCTSTR *fileList; //文件列表
 	LPDWORD crc32; //数据校验
@@ -87,7 +87,7 @@ typedef struct tagBgmLib
 //游戏音效库
 typedef struct tagSndLib
 {
-	LPCTSTR sndPath; //游戏音效目录，以斜杠结束
+	LPCTSTR sndPath; //游戏音效目录
 	DWORD sum; //实际音效文件总数
 	LPCTSTR *fileList; //文件列表
 	LPDWORD crc32; //数据校验
@@ -96,7 +96,7 @@ typedef struct tagSndLib
 //调色板库
 typedef struct tagPalLib
 {
-	LPCTSTR palPath; //调色板目录，以斜杠结束
+	LPCTSTR palPath; //调色板目录
 	DWORD sum; //调色板总数
 	LPCTSTR *fileList; //文件列表
 	LPDWORD crc32; //数据校验
@@ -105,7 +105,7 @@ typedef struct tagPalLib
 //二进制资源库
 typedef struct tagBinLib
 {
-	LPCTSTR binPath; //二进制数据目录，以斜杠结束
+	LPCTSTR binPath; //二进制数据目录
 	DWORD verGraphic; //图像资源版本号
 	DWORD verAnime; //动画资源版本号
 	LPCTSTR sGraphicInfo; //图像目录文件
@@ -127,7 +127,7 @@ typedef struct tagLocalData
 //数据配置资源库
 typedef struct tagDataSet
 {
-	LPCTSTR dataPath; //配置数据目录，以斜杠结束
+	LPCTSTR dataPath; //配置数据目录
 	LPCTSTR userID; //用来指示当前用户
 	PLocalData userData; //指向当前用户的本地数据
 } DataSet, *PDataSet;
@@ -135,7 +135,7 @@ typedef struct tagDataSet
 //地图资源库
 typedef struct tagMapPack
 {
-	LPCTSTR mapPath; //地图目录，以斜杠结束
+	LPCTSTR mapPath; //地图目录
 	//公共地图
 	//私有地图
 	//随机地图
@@ -144,7 +144,7 @@ typedef struct tagMapPack
 //游戏资源结构
 typedef struct tagGameRes
 {
-	LPCTSTR rootPath; //游戏根目录，以斜杠结束
+	LPCTSTR rootPath; //游戏根目录
 	WORD mainVersion; //游戏主版本
 	WORD subVersion; //游戏子版本
 	PBinLib pBinLib; //二进制资源
@@ -156,35 +156,31 @@ typedef struct tagGameRes
 
 //=====================================
 // IO Data Types
+// Sample: PostThreadMessage(ThreadId, IOType, IOReqList, CallbackFunc)
+// CallbackFunc: void (*func)(void)
 //
 
-typedef struct tagIOReqItem
+typedef struct tagIOItem
 {
-	union
-	{
-		DWORD offset;
-		LPVOID ptr;
-	};
+	BOOL isCompleted;
+	DWORD offset;
 	union
 	{
 		DWORD size;
-		LONG index;
+		TCHAR end;
 	};
-} IOReqItem, *PIOReqItem;
-
-typedef struct tagIORspItem
-{
-	BOOL isCompleted;
 	DWORD maxSize;
-	LPVOID *pData;
-} IORspItem, *PIORspItem;
+	LPVOID pData;
+} IOItem, *PIOItem;
 
 typedef struct tagIOList
 {
 	LONG count;
-	PIOReqItem pReqList;
-	PIORspItem pRspList;
-} IOItem, *PIOItem;
+	PIOItem *pList;
+} IOList, *PIOList;
+
+/* Definition of FP thread routine */
+typedef UINT(CALLBACK *FP_THREAD_ROUTINE)(LPVOID);
 
 
 
@@ -213,7 +209,7 @@ public:
 	static HRESULT WINAPI Create(const PBinLib pBin);
 	static VOID WINAPI Destroy();
 
-	HANDLE GetFileHandle(int type) const;
+	HANDLE GetFileHandle(const int type) const;
 	HRESULT GetImageById(LONG id, LPVOID pData); //通过ID得到图片
 	HRESULT GetAnimeById(LONG id, LPVOID pData); //通过ID得到动画
 	HRESULT SwitchPalette(LONG id); //更换调色板
@@ -265,23 +261,24 @@ private:
 	GameEnv(const PGameRes pRes); //私有构造方法
 	virtual ~GameEnv(void); //析构函数
 
+protected:
 	static PGameRes WINAPI OpenResFiles(const tstring whichPath); //判断目录是否为游戏资源的根目录
 	static HRESULT WINAPI ValidateFile(HANDLE hFile); //校验指定文件
-
-protected:
-	const BinLib &GetBinLib() const; //得到二进制库引用
-	const PalLib &GetPaletteLib() const; //得到调色板库引用
-	const SndLib &GetSoundLib() const; //得到音效库引用
-	const BgmLib &GetBGMLib() const; //得到背景音乐库引用
-
-	BOOL LoadPalette(PalLib& pal); //加载调色板
 
 public:
 	static HRESULT WINAPI OpenEnv(const tstring whichPath); //载入全部资源引用并打开对象
 	static VOID WINAPI CloseEnv(); //卸载全部资源引用并关闭对象
 
+	const PBinLib GetBinLib() const; //得到二进制库引用
+	const PPalLib &GetPaletteLib() const; //得到调色板库引用
+	const PSndLib &GetSoundLib() const; //得到音效库引用
+	const PBgmLib &GetBGMLib() const; //得到背景音乐库引用
+
+public:
 	LPCTSTR GetRootPath() const; //得到游戏根目录
 	LPCTSTR GetBinPath() const; //得到游戏数据目录
 	LPCTSTR GetDataPath() const; //得到用户数据目录
 	LPCTSTR GetMapPath() const; //得到地图目录
+
+	HRESULT InitPalette(); //加载调色板
 };

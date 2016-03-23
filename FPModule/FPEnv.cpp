@@ -142,22 +142,22 @@ LPCTSTR GameEnv::GetMapPath() const
 	return this->pGameRes->pMapPack->mapPath;
 }
 
-const BinLib &GameEnv::GetBinLib() const
+const PBinLib GameEnv::GetBinLib() const
 {
-	return *(this->pGameRes->pBinLib);
+	return this->pGameRes->pBinLib;
 }
 
-const PalLib &GameEnv::GetPaletteLib() const
+const PPalLib &GameEnv::GetPaletteLib() const
 {
-	return *(this->pGameRes->pBinLib->pLibPal);
+	return this->pGameRes->pBinLib->pLibPal;
 }
 
-const SndLib &GameEnv::GetSoundLib() const
+const PSndLib &GameEnv::GetSoundLib() const
 {
-	return *(this->pGameRes->pBinLib->pLibSnd);
+	return this->pGameRes->pBinLib->pLibSnd;
 }
 
-const BgmLib &GameEnv::GetBGMLib() const
+const PBgmLib &GameEnv::GetBGMLib() const
 {
-	return *(this->pGameRes->pBinLib->pLibBgm);
+	return this->pGameRes->pBinLib->pLibBgm;
 }

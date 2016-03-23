@@ -109,10 +109,17 @@
 #define FP_PATH_STC _T("\\static") //固定地图数据相对路径
 #define FP_PATH_RDM _T("\\random") //随机地图数据相对路径
 
+#define FP_FILE_GAME_CONFIG _T("Config.dat") //动画数据文件名
 #define FP_FILE_GRAPHIC_INFO _T("GraphicInfo_") //图像字典文件名
 #define FP_FILE_GRAPHIC_DATA _T("GraphicData_") //图像数据文件名
 #define FP_FILE_ANIME_INFO _T("AnimeInfo_") //动画字典文件名
 #define FP_FILE_ANIME_DATA _T("AnimeData_") //动画数据文件名
+
+#define FP_HANDLE_GAME_CONFIG 0x0000 //游戏配置句柄编号
+#define FP_HANDLE_GRAPHIC_INFO 0x0001 //图像字典句柄编号
+#define FP_HANDLE_GRAPHIC_DATA 0x0002 //图像数据句柄编号
+#define FP_HANDLE_ANIME_INFO 0x0003 //动画字典句柄编号
+#define FP_HANDLE_ANIME_DATA 0x0004 //动画数据句柄编号
 
 //调色板文件宏定义
 #define FP_PALETTE_DAY		palet_00
@@ -184,6 +191,7 @@ typedef struct tagFPImage
 class FP_MODULE_API IGameGraphics
 {
 public:
+	virtual HANDLE GetFileHandle(const int type) const = 0; //得到文件操作句柄
 	virtual HRESULT GetImageById(LONG id, LPVOID pData) = 0; //通过ID得到图片
 	virtual HRESULT GetAnimeById(LONG id, LPVOID pData) = 0; //通过ID得到动画
 	virtual HRESULT SwitchPalette(LONG id) = 0; //更换调色板
@@ -248,6 +256,7 @@ public:
 	virtual LPCTSTR GetBinPath() const = 0; //得到游戏数据目录
 	virtual LPCTSTR GetDataPath() const = 0; //得到用户数据目录
 	virtual LPCTSTR GetMapPath() const = 0; //得到地图目录
+	virtual HRESULT InitPalette() = 0; //加载调色板
 };
 
 

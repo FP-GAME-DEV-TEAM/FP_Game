@@ -15,7 +15,14 @@ BOOL WINAPI IsFolderExist(tstring whichPath)
 {
 	WIN32_FIND_DATA ffd;
 	BOOL exist = FALSE;
-	HANDLE hFind = FindFirstFile(whichPath.c_str(), &ffd);
+	TCHAR path[MAX_PATH] = {0};
+	size_t len = whichPath.length();
+	HANDLE hFind = NULL;
+	if (_T('\\') == whichPath[len - 1])
+		_tcsncpy(path, whichPath.c_str(), len - 1);
+	else
+		_tcsncpy(path, whichPath.c_str(), len);
+	hFind = FindFirstFile(path, &ffd);
 	if((hFind != INVALID_HANDLE_VALUE) && (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 	{
 		exist = TRUE;

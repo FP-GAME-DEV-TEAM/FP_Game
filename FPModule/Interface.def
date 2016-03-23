@@ -3,5 +3,6 @@ LIBRARY
 EXPORTS
 
 ;Functions
-LoadGameEnv @ 1;
-InitGraphics @ 2;
+InitGameEnv @ 1;
+ReleaseGameEnv @ 2;
+InitGraphics @ 3;
