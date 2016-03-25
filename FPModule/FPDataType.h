@@ -30,7 +30,7 @@ typedef struct tagGraphicInfo
 	BYTE path; //用于地图，0表示障碍物，1表示可以走上去
 	BYTE reserve[5]; //保留位，作用未知
 	LONG index; //用于反查的地图编号
-} GraphicInfo;
+} GraphicInfo, *PGraphicInfo;
 
 //图像数据头结构(16BYTE)
 typedef struct tagGraphicData
@@ -41,7 +41,7 @@ typedef struct tagGraphicData
 	LONG width; //图片的宽度
 	LONG height; //图片的高度
 	DWORD size; //图片数据大小（包括这个头）
-} GraphicData;
+} GraphicData, *PGraphicData;
 
 //动画目录结构(16BYTE)
 typedef struct tagAnimeInfo
@@ -51,7 +51,7 @@ typedef struct tagAnimeInfo
 	DWORD size; //一个完整动画的大小
 	WORD count; //一个完整动画包含的动作数
 	WORD check; //版本校验位，用途未知
-} AnimeInfo;
+} AnimeInfo, *PAnimeInfo;
 
 //动画数据的头结构(12BYTE)
 typedef struct tagAnimeHead
@@ -60,14 +60,14 @@ typedef struct tagAnimeHead
 	WORD action; //动作的类型（有些动作不是所有动画都有）
 	DWORD duration; //这个动作循环所需的时间（单位为毫秒）
 	DWORD frames; //这个动作包含的图片帧数
-} AnimeHead;
+} AnimeHead, *PAnimeHead;
 
 //动画数据单元(10BYTE)
 typedef struct tagAnimeData
 {
 	LONG index; //图片帧对应的图像物理ID
 	BYTE reserve[6]; //保留位，可能与游戏逻辑判定和音乐播放有关
-} AnimeData;
+} AnimeData, *PAnimeData;
 
 
 
@@ -176,11 +176,25 @@ typedef struct tagIOItem
 typedef struct tagIOList
 {
 	LONG count;
-	PIOItem *pList;
+	PIOItem pList;
 } IOList, *PIOList;
 
-/* Definition of FP thread routine */
+
+
+//=====================================
+// Thread Data Types
+// Definition of FP thread routine
+//
+
 typedef UINT(CALLBACK *FP_THREAD_ROUTINE)(LPVOID);
+
+typedef struct tagThreadInfo
+{
+	HANDLE hThread;
+	UINT uThreadId;
+	BOOL bRunning;
+	FP_THREAD_ROUTINE lpCallback;
+} ThreadInfo, *PThreadInfo;
 
 
 
@@ -198,9 +212,15 @@ private:
 	HANDLE hGraphicData; //图像数据对象
 	HANDLE hAnimeInfo; //动画目录对象
 	HANDLE hAnimeData; //动画数据对象
-	PALETTEENTRY pPalette[FP_STORE_PAL_COUNT]; //当前调色板
+	PALETTEENTRY mPalette[FP_STORE_PAL_COUNT]; //当前调色板
+	PALETTEENTRY mPaletteDefault[FP_STORE_PAL_DEFAULT]; //固定调色板数组表
+	PALETTEENTRY mPaletteOptional[FP_FILE_COUNT_PAL][FP_STORE_PAL_OPTIONAL]; //可变调色板数组表
 
-	std::map<LONG, LPVOID> graphicCache;
+protected:
+	std::map<LONG, LPBYTE> mGraphicCache; //图像库数据缓存
+	std::map<LONG, LPBYTE> mAnimeCache; //图像库数据缓存
+	std::vector<GraphicInfo> mGraphicsList; //图像目录数据
+	std::vector<AnimeInfo> mAnimeList; //动画目录数据
 
 	GameGraphics(); //构造函数
 	virtual ~GameGraphics(void); //析构函数
@@ -209,7 +229,9 @@ public:
 	static HRESULT WINAPI Create(const PBinLib pBin);
 	static VOID WINAPI Destroy();
 
-	HANDLE GetFileHandle(const int type) const;
+	HRESULT InitPalette(const PPalLib pPal); //加载调色板
+
+	HANDLE GetFileHandle(const UINT type) const;
 	HRESULT GetImageById(LONG id, LPVOID pData); //通过ID得到图片
 	HRESULT GetAnimeById(LONG id, LPVOID pData); //通过ID得到动画
 	HRESULT SwitchPalette(LONG id); //更换调色板
@@ -279,6 +301,10 @@ public:
 	LPCTSTR GetBinPath() const; //得到游戏数据目录
 	LPCTSTR GetDataPath() const; //得到用户数据目录
 	LPCTSTR GetMapPath() const; //得到地图目录
-
-	HRESULT InitPalette(); //加载调色板
 };
+
+
+extern GameEnv *mainEnv;
+extern GameGraphics *mainGraphics;
+
+extern ThreadInfo mainIOThread;

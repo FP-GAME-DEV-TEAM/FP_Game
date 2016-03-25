@@ -8,21 +8,14 @@
 
 #include "stdafx.h"
 #include "FPDataType.h"
-#include "FPFunction.h"
 #include "FPDump.h"
+
 
 GameGraphics *mainGraphics = NULL;
 
-extern GameEnv *mainEnv;
-
 //=====================================
-//初始化图形模块
+// GameGraphics类的实现
 //
-
-FP_MODULE_API VOID WINAPI InitGraphics()
-{
-	GameGraphics::Create(mainEnv->GetBinLib());
-}
 
 GameGraphics *GameGraphics::pInstance = NULL;
 
@@ -32,7 +25,9 @@ GameGraphics::GameGraphics()
 	this->hGraphicData = NULL;
 	this->hAnimeInfo = NULL;
 	this->hAnimeData = NULL;
-	ZeroMemory(this->pPalette, FP_STORE_PAL_COUNT);
+	ZeroMemory(this->mPalette, FP_STORE_PAL_COUNT);
+	ZeroMemory(this->mPaletteDefault, FP_STORE_PAL_DEFAULT);
+	ZeroMemory(this->mPaletteOptional, FP_FILE_COUNT_PAL*FP_STORE_PAL_OPTIONAL);
 }
 
 GameGraphics::~GameGraphics()
@@ -102,7 +97,7 @@ VOID WINAPI GameGraphics::Destroy()
 	SAFE_DELETE(pInstance);
 }
 
-HANDLE GameGraphics::GetFileHandle(const int type) const
+HANDLE GameGraphics::GetFileHandle(const UINT type) const
 {
 	HANDLE handle = NULL;
 	switch (type)
@@ -137,5 +132,89 @@ HRESULT GameGraphics::GetAnimeById(LONG id, LPVOID pData)
 
 HRESULT GameGraphics::SwitchPalette(LONG id)
 {
+	static BOOL flag = TRUE;
+	if (this->mPaletteOptional[id][0].peRed != 0 && flag)
+	{
+		flag = FALSE;
+		FP_DEBUG_MSG(_T("Palette %d Data:"), id);
+		for (size_t i = 0; i < FP_STORE_PAL_OPTIONAL; i++)
+		{
+			if (i % 4 == 0)
+			{
+				FP_DEBUG_MSG(_T("\n"));
+			}
+			FP_DEBUG_MSG(_T(" 0x%08x "), this->mPaletteOptional[id][i]);
+		}
+		FP_DEBUG_MSG(_T("\n"));
+	}
+	return S_OK;
+}
+
+static UINT CALLBACK FreeIOList(LPVOID pParam)
+{
+	PIOList list = (PIOList)pParam;
+	PIOItem item = list->pList;
+	delete[] item;
+	delete list;
+	return 0;
+}
+
+HRESULT GameGraphics::InitPalette(const PPalLib pPal)
+{
+	DWORD n, count;
+	tstring filePath = pPal->palPath;
+	tstring tmpPath;
+	HANDLE hFile;
+	LPBYTE buffer;
+
+	//固定调色板的载入
+	n = 0;
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00000000);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00800000);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00008000);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00808000);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00000080);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00800080);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00008080);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00808080);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00c0dcc0);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00a6caf0);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00de0000);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00ff5f00);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00ffffa0);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00005fd2);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x0050d2ff);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x0028e128);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00f5c396);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x001ea05f);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00c37d46);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x009b551e);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00464137);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x0028231e);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00fffbf0);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x003a6ea5);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00808080);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00ff0000);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x0000ff00);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00ffff00);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x000000ff);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00ff80ff);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x0000ffff);
+	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00ffffff);
+
+	//可变调色板的载入
+	PIOList list = new IOList();
+	list->count = FP_FILE_COUNT_PAL;
+	PIOItem item = new IOItem[FP_FILE_COUNT_PAL];
+	for (n = 0; n < FP_FILE_COUNT_PAL; n++)
+	{
+		ZeroMemory(&item[n], sizeof(IOItem));
+		item[n].isCompleted = FALSE;
+		item[n].offset = 0;
+		item[n].size = FP_FILE_SIZE_PAL;
+		item[n].pData = mPaletteOptional[n];
+	}
+	list->pList = item;
+	PostThreadMessage(mainIOThread.uThreadId, FPMSG_IO_READ_PALETTE, (WPARAM)list, (LPARAM)FreeIOList);
 	return S_OK;
 }

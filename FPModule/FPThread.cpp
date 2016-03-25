@@ -11,17 +11,15 @@
 #include "FPFunction.h"
 
 /* Bin thread and the relevants */
-HANDLE hBinThread = NULL;
-UINT dwBinThreadId = 0;
-FP_THREAD_ROUTINE lpBinCallback;
+ThreadInfo mainIOThread = { 0 };
 
 HRESULT WINAPI StartIOThreads()
 {
 	//check if the IO threads has been started.
 	DWORD dwExitCode = 0;
-	if (hBinThread != NULL)
+	if (mainIOThread.hThread != NULL)
 	{
-		if (GetExitCodeThread(hBinThread, &dwExitCode) && STILL_ACTIVE == dwExitCode)
+		if (GetExitCodeThread(mainIOThread.hThread, &dwExitCode) && STILL_ACTIVE == dwExitCode)
 		{
 			return E_HANDLE;
 		}
@@ -36,9 +34,9 @@ HRESULT WINAPI StartIOThreads()
 	}
 
 	//start thread
-	lpBinCallback = BinProc;
-	hBinThread = (HANDLE)_beginthreadex(NULL, 0, lpBinCallback, hStartEvent, 0, &dwBinThreadId);
-	if (NULL == hBinThread)
+	mainIOThread.lpCallback = BinProc;
+	mainIOThread.hThread = (HANDLE)_beginthreadex(NULL, 0, mainIOThread.lpCallback, hStartEvent, 0, &mainIOThread.uThreadId);
+	if (NULL == mainIOThread.hThread)
 	{
 		FP_DEBUG_MSG(_T("Starting IO thread failed, errno:%d\n"), GetLastError());
 		CloseHandle(hStartEvent);
@@ -48,5 +46,15 @@ HRESULT WINAPI StartIOThreads()
 	//wait thread start event to avoid PostThreadMessage return errno:1444
 	WaitForSingleObject(hStartEvent, INFINITE);
 	CloseHandle(hStartEvent);
+	return S_OK;
+}
+
+HRESULT WINAPI DestroyIOThreads()
+{
+	PostThreadMessage(mainIOThread.uThreadId, FPMSG_THREAD_STOP, 0, 0);
+	//wait thread end and then close handle
+	WaitForSingleObject(mainIOThread.hThread, INFINITE);
+	CloseHandle(mainIOThread.hThread);
+	FP_DEBUG_MSG(_T("Game IO thread stoped.\n"));
 	return S_OK;
 }

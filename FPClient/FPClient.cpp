@@ -21,12 +21,14 @@ RECT rcViewport;								// Rect of the game viewport
 DWORD dwLastTick;								// Time of last logical frame displayed
 
 IGameEnv *gameEnv = NULL;						// Main game resource interface
+IGameGraphics *gameGraphics = NULL;				// Main game graphics interface
 
 // Define game resource interface
-typedef VOID(WINAPI *ICreateEnv)(IGameEnv **IEnv);
-typedef VOID(WINAPI *IDestroyEnv)();
+typedef HRESULT(WINAPI *ICreateEnv)(IGameEnv **IEnv);
+typedef HRESULT(WINAPI *IDestroyEnv)();
 
-typedef VOID(WINAPI *ICreateGraphics)();
+typedef HRESULT(WINAPI *ICreateGraphics)(IGameGraphics **IGraphics);
+typedef HRESULT(WINAPI *IDestroyGraphics)();
 
 
 // Forward declarations of functions included in this code module:
@@ -84,7 +86,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	}
 
 	// Start game logic
-	FP_DEBUG_MSG(_T("Now starting Game...\n"));
+	FP_DEBUG_MSG(_T("Game starting now...\n"));
 	if (FAILED(GameInit()))
 	{
 		MessageBox(hMainWnd, _T("Game starting failed!"), _T("Error"), MB_ICONERROR | MB_OK);
@@ -158,28 +160,17 @@ BOOL InitWindow(int nCmdShow, HACCEL *phAccel)
 	return TRUE;
 }
 
-//≤‚ ‘ ˝æ›
-static LPBYTE data = NULL;
-
 HRESULT GameLoop()
 {
-	static BOOL flag = TRUE;
-	if (flag)
-	{
-		flag = FALSE;
-		data = (LPBYTE)gameEnv->InitPalette();
-	}
-	if (*data == 0)
-	{
-		delete data;
-	}
+	//≤‚ ‘IO
+	gameGraphics->SwitchPalette(2);
 	return S_OK;
 }
 
 HRESULT GameInit()
 {
 	// Load dependent lib(s)
-	FP_DEBUG_MSG(_T("Now loading FPModule...\n"));
+	FP_DEBUG_MSG(_T("Loading FP DLL module...\n"));
 	hRcModule = LoadLibrary(GAME_RESOURCE_DLL);
 	if (NULL == hRcModule)
 	{
@@ -190,18 +181,22 @@ HRESULT GameInit()
 	// Init game resources
 	if (NULL == gameEnv)
 	{
+		// Game Env
 		ICreateEnv CreateEnv = (ICreateEnv)GetProcAddress(hRcModule, "InitGameEnv");
-		CreateEnv(&gameEnv);
-		if (NULL == gameEnv)
+		if (FAILED(CreateEnv(&gameEnv)))
 		{
 			FP_DEBUG_MSG(_T("Failed to open Game Env!\n"));
 			return E_FAIL;
 		}
-		FP_DEBUG_MSG(_T("Game Env has been initialized:\n\t%s\n"), gameEnv->GetRootPath());
+		FP_DEBUG_MSG(_T("Game Env has been initialized:\n\t@ %s\n"), gameEnv->GetRootPath());
 
-		//≤‚ ‘
+		// Game graphics
 		ICreateGraphics CreateGraphics = (ICreateGraphics)GetProcAddress(hRcModule, "InitGraphics");
-		CreateGraphics();
+		if (FAILED(CreateGraphics(&gameGraphics)))
+		{
+			FP_DEBUG_MSG(_T("Failed to initialize Game Graphics!\n"));
+			return E_FAIL;
+		}
 	}
 
 	// Init DirectDraw & prepare for game display
@@ -236,14 +231,27 @@ HRESULT GameExit()
 	// Release game resources
 	if (NULL != gameEnv)
 	{
-		FP_DEBUG_MSG(_T("Game Env has been released.\n"));
+		// Game graphics
+		IDestroyGraphics DestroyGraphics = (IDestroyGraphics)GetProcAddress(hRcModule, "ReleaseGraphics");
+		if (FAILED(DestroyGraphics()))
+		{
+			FP_DEBUG_MSG(_T("Failed to release Game Graphics!\n"));
+			return E_FAIL;
+		}
+
+		// Game Env
 		gameEnv = NULL;
+		FP_DEBUG_MSG(_T("Game Env has been released.\n"));
 		IDestroyEnv DestroyEnv = (IDestroyEnv)GetProcAddress(hRcModule, "ReleaseGameEnv");
-		DestroyEnv();
+		if (FAILED(DestroyEnv()))
+		{
+			FP_DEBUG_MSG(_T("Failed to close Game Env!\n"));
+			return E_FAIL;
+		}
 	}
 
 	// Unload dependent lib(s)
-	FP_DEBUG_MSG(_T("Now unloading FPModule...\n"));
+	FP_DEBUG_MSG(_T("Unloading FP DLL module...\n"));
 	FreeLibrary(hRcModule);
 
 	// Do other cleanup

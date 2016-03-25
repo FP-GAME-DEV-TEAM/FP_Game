@@ -32,25 +32,56 @@ BOOL APIENTRY DllMain(
 
 	default:
 		break;
-
 	}
 	return TRUE;
 }
 
-//初始化游戏资源环境
-FP_MODULE_API VOID WINAPI InitGameEnv(IGameEnv **IEnv)
+//初始化游戏资源接口
+FP_MODULE_API HRESULT WINAPI InitGameEnv(IGameEnv **IEnv)
 {
+	*IEnv = NULL;
 	if (SUCCEEDED(GameEnv::OpenEnv(exeFilePath)))
 	{
-		FP_DEBUG_MSG(_T("Game Env has been opened.\n"));
-		StartIOThreads();
+		if (SUCCEEDED(StartIOThreads()))
+		{
+			*IEnv = mainEnv;
+			FP_DEBUG_MSG(_T("Game Env has been opened.\n"));
+			return S_OK;
+		}
 	}
-	*IEnv = mainEnv;
+	return E_FAIL;
 }
 
-//释放游戏资源环境
-FP_MODULE_API VOID WINAPI ReleaseGameEnv()
+//释放游戏资源接口
+FP_MODULE_API HRESULT WINAPI ReleaseGameEnv()
 {
+	if (FAILED(DestroyIOThreads()))
+	{
+		FP_DEBUG_MSG(_T("Failed to stop game IO thread.\n"));
+	}
 	GameEnv::CloseEnv();
 	FP_DEBUG_MSG(_T("Game Env has been closed.\n"));
+	return S_OK;
+}
+
+//初始化游戏图形接口
+FP_MODULE_API HRESULT WINAPI InitGraphics(IGameGraphics **IGraphics)
+{
+	*IGraphics = NULL;
+	if (SUCCEEDED(GameGraphics::Create(mainEnv->GetBinLib())))
+	{
+		*IGraphics = mainGraphics;
+		FP_DEBUG_MSG(_T("Game Graphics has been initialized.\n"));
+		mainGraphics->InitPalette(mainEnv->GetBinLib()->pLibPal);
+		return S_OK;
+	}
+	return E_FAIL;
+}
+
+//释放游戏图形接口
+FP_MODULE_API HRESULT WINAPI ReleaseGraphics()
+{
+	GameGraphics::Destroy();
+	FP_DEBUG_MSG(_T("Game Graphics has been released.\n"));
+	return S_OK;
 }

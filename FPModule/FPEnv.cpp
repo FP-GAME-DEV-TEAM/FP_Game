@@ -15,10 +15,11 @@ extern BOOL WINAPI CheckPalLib(const tstring whichPath, PPalLib &pal);
 extern BOOL WINAPI CheckBinLib(const tstring whichPath, PBinLib &pLib);
 extern BOOL WINAPI CheckDataSet(const tstring whichPath, PDataSet &pLib);
 
+
 GameEnv *mainEnv = NULL;
 
 //=====================================
-// GameEnv类中，资源检查部分的实现
+// GameEnv类的实现
 //
 
 GameEnv *GameEnv::pInstance = NULL;
@@ -26,8 +27,6 @@ GameEnv *GameEnv::pInstance = NULL;
 GameEnv::GameEnv(const PGameRes pRes)
 {
 	pGameRes = pRes;
-	//生成图像资源库
-	GameGraphics::Create(pGameRes->pBinLib);
 }
 
 GameEnv::~GameEnv()

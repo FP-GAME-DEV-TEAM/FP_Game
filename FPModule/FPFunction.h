@@ -14,10 +14,11 @@
 // Game Environment API
 //
 
-FP_MODULE_API VOID WINAPI InitGameEnv(IGameEnv **IEnv); //初始化资源模块
-FP_MODULE_API VOID WINAPI ReleaseGameEnv(); //释放资源模块
+FP_MODULE_API HRESULT WINAPI InitGameEnv(IGameEnv **IEnv); //初始化资源模块
+FP_MODULE_API HRESULT WINAPI ReleaseGameEnv(); //释放资源模块
 
-FP_MODULE_API VOID WINAPI InitGraphics(); //初始化图像模块
+FP_MODULE_API HRESULT WINAPI InitGraphics(IGameGraphics **IGraphics); //初始化图像模块
+FP_MODULE_API HRESULT WINAPI DGraphics(); //初始化图像模块
 
 
 //=====================================
@@ -26,3 +27,4 @@ FP_MODULE_API VOID WINAPI InitGraphics(); //初始化图像模块
 
 UINT CALLBACK BinProc(HANDLE param);
 HRESULT WINAPI StartIOThreads();
+HRESULT WINAPI DestroyIOThreads();

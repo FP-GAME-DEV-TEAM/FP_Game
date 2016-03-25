@@ -166,7 +166,7 @@ typedef enum tagPalette
 //文件后缀宏定义
 #define FP_FILE_SUFFIX_BIN _T(".bin") //图像资源文件后缀
 #define FP_FILE_SUFFIX_DAT _T(".dat") //数据配置文件后缀
-#define FP_FILE_SUFFIX_PAL _T(".pal") //调色板文件后缀
+#define FP_FILE_SUFFIX_PAL _T(".fgp") //调色板文件后缀
 #define FP_FILE_SUFFIX_LOG _T(".log") //日志文件后缀
 #define FP_FILE_SUFFIX_MAP _T(".map") //地图文件后缀
 #define FP_FILE_SUFFIX_MP3 _T(".mp3") //背景音乐文件后缀
@@ -191,7 +191,7 @@ typedef struct tagFPImage
 class FP_MODULE_API IGameGraphics
 {
 public:
-	virtual HANDLE GetFileHandle(const int type) const = 0; //得到文件操作句柄
+	virtual HANDLE GetFileHandle(const UINT type) const = 0; //得到文件操作句柄
 	virtual HRESULT GetImageById(LONG id, LPVOID pData) = 0; //通过ID得到图片
 	virtual HRESULT GetAnimeById(LONG id, LPVOID pData) = 0; //通过ID得到动画
 	virtual HRESULT SwitchPalette(LONG id) = 0; //更换调色板
@@ -256,7 +256,6 @@ public:
 	virtual LPCTSTR GetBinPath() const = 0; //得到游戏数据目录
 	virtual LPCTSTR GetDataPath() const = 0; //得到用户数据目录
 	virtual LPCTSTR GetMapPath() const = 0; //得到地图目录
-	virtual HRESULT InitPalette() = 0; //加载调色板
 };
 
 

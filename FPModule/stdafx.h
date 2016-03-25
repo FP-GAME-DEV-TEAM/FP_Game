@@ -25,6 +25,7 @@
 #include <string>
 #include <algorithm>
 #include <fstream>
+#include <vector>
 #include <map>
 #include <set>
 

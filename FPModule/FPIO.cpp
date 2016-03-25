@@ -11,10 +11,10 @@
 #include "FPFunction.h"
 #include "FPDump.h"
 
-extern GameGraphics *mainGraphics;
+static HRESULT FPFileRead(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpCallback);
+static HRESULT FPFileWrite(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpCallback);
+static HRESULT FPPalettePreload(const PPalLib pPal, PIOList pItemList, FP_THREAD_ROUTINE lpCallback);
 
-static HRESULT FileReadData(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpCallback);
-static HRESULT FileWriteData(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpCallback);
 static HRESULT __fastcall ReadData(HANDLE hFile, LONG dwOffset, DWORD dwSize, LPVOID lpBuffer);
 static HRESULT __fastcall WriteData(HANDLE hFile, LPVOID lpBuffer, LONG dwOffset, DWORD dwSize);
 
@@ -22,6 +22,7 @@ UINT CALLBACK BinProc(HANDLE param)
 {
 	HANDLE hParam = param;
 	MSG msg;
+	HRESULT hResult;
 	PeekMessage(&msg, NULL, WM_USER, WM_USER, PM_NOREMOVE);
 	// Set thread start event
 	if (!SetEvent(hParam))
@@ -29,65 +30,71 @@ UINT CALLBACK BinProc(HANDLE param)
 		FP_DEBUG_MSG(_T("Setting start event failed, errno:%d\n"), GetLastError());
 		return 1;
 	}
-	FP_DEBUG_MSG(_T("IO Thread started.\n"));
+	FP_DEBUG_MSG(_T("Game IO thread started.\n"));
+	mainIOThread.bRunning = TRUE;
 	// Main bin thread loop
 	hParam = NULL;
-	while (true)
+	while (mainIOThread.bRunning)
 	{
 		if (GetMessage(&msg, NULL, FPMSG_BASE, FPMSG_END))
 		{
 			switch (msg.message)
 			{
 			case FPMSG_THREAD_START:
-				// Check IO file status
+				mainIOThread.bRunning = TRUE;
+				break;
+			case FPMSG_THREAD_STOP:
+				mainIOThread.bRunning = FALSE;
 				break;
 			case FPMSG_IO_READ_IMAGEDATA:
-				hParam = mainGraphics->GetFileHandle(FP_HANDLE_GRAPHIC_DATA);
-				break;
 			case FPMSG_IO_READ_ANIMEDATA:
-				hParam = mainGraphics->GetFileHandle(FP_HANDLE_ANIME_DATA);
-				break;
 			case FPMSG_IO_READ_IMAGEINFO:
-				hParam = mainGraphics->GetFileHandle(FP_HANDLE_GRAPHIC_INFO);
-				break;
 			case FPMSG_IO_READ_ANIMEINFO:
-				hParam = mainGraphics->GetFileHandle(FP_HANDLE_ANIME_INFO);
+				hParam = mainGraphics->GetFileHandle(msg.message);
+				hResult = FPFileRead(hParam, (PIOList)msg.wParam, (FP_THREAD_ROUTINE)msg.lParam);
+				if (FAILED(hResult))
+				{
+					ErrorHandler(ERROR_RES_Unknown, _T(__FUNCTION__));
+					FP_DEBUG_MSG(_T("An error occurred in IO proc, errno:0x%0x\n"), hResult);
+				}
+				break;
+			case FPMSG_IO_READ_PALETTE:
+				hParam = mainEnv->GetPaletteLib();
+				hResult = FPPalettePreload((const PPalLib)hParam, (PIOList)msg.wParam, (FP_THREAD_ROUTINE)msg.lParam);
+				if (FAILED(hResult))
+				{
+					ErrorHandler(ERROR_RES_Unknown, _T(__FUNCTION__));
+					FP_DEBUG_MSG(_T("An error occurred during Pal preload, errno:0x%0x\n"), hResult);
+				}
 				break;
 			default:
 				break;
 			}
-			if (NULL != hParam)
-			{
-				FileReadData(hParam, (PIOList)msg.wParam, (FP_THREAD_ROUTINE)msg.lParam);
-			}
 		}
 	}
+	_endthreadex(0);
 	return 0;
 }
 
-static HRESULT FileReadData(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpCallback)
+static HRESULT FPFileRead(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpCallback)
 {
 	HRESULT hResult;
-	BOOL bFlag = TRUE;
 	PIOItem pItem = NULL;
 	PTCHAR lpTempStr = NULL;
 	int length = 0;
 	if (NULL == hFile || INVALID_HANDLE_VALUE == hFile || NULL == pItemList)
 	{
-		ErrorHandler(ERROR_RES_Unknown, _T(__FUNCTION__));
 		return E_INVALIDARG;
 	}
 	if (!(pItemList->count > 0) || NULL == pItemList->pList)
 	{
-		ErrorHandler(ERROR_RES_Unknown, _T(__FUNCTION__));
 		return E_POINTER;
 	}
 	for (size_t i = 0; i < pItemList->count; i++)
 	{
-		pItem = pItemList->pList[i];
+		pItem = &pItemList->pList[i];
 		if (NULL == pItem)
 		{
-			ErrorHandler(ERROR_RES_Unknown, _T(__FUNCTION__));
 			return E_FAIL;
 		}
 		if (!pItem->isCompleted)
@@ -101,7 +108,6 @@ static HRESULT FileReadData(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE l
 				{
 					delete[] lpTempStr;
 					lpTempStr = NULL;
-					bFlag = FALSE;
 					continue;
 				}
 				length = _tcschr((PTCHAR)lpTempStr, pItem->end) - lpTempStr;
@@ -124,20 +130,69 @@ static HRESULT FileReadData(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE l
 				pItem->isCompleted = TRUE;
 			}
 		}
-		if (pItem->isCompleted == FALSE)
-		{
-			bFlag = FALSE;
-		}
 	}
-	if (NULL != lpCallback && bFlag)
+	if (NULL != lpCallback)
 	{
 		lpCallback(pItemList);
 	}
 	return S_OK;
 }
 
-static HRESULT FileWriteData(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpCallback)
+static HRESULT FPFileWrite(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpCallback)
 {
+	return S_OK;
+}
+
+static HRESULT FPPalettePreload(const PPalLib pPal, PIOList pItemList, FP_THREAD_ROUTINE lpCallback)
+{
+	HRESULT hResult;
+	HANDLE hFile;
+	tstring strPath;
+	PIOItem pItem;
+	LPBYTE buffer;
+	if (NULL == pPal || NULL == pItemList)
+	{
+		return E_INVALIDARG;
+	}
+	if (!(pItemList->count > 0) || NULL == pItemList->pList)
+	{
+		return E_POINTER;
+	}
+	if (pItemList->count != pPal->sum)
+	{
+		return E_FAIL;
+	}
+	buffer = new BYTE[FP_FILE_SIZE_PAL];
+	for (size_t i = 0; i < pItemList->count; i++)
+	{
+		strPath = pPal->palPath;
+		strPath += _T("\\");
+		strPath += (pPal->fileList[i]);
+		pItem = &pItemList->pList[i];
+		hFile = CreateFile(strPath.c_str(), GENERIC_READ, FILE_SHARE_READ,
+			NULL, OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, NULL);
+		if (INVALID_HANDLE_VALUE == hFile)
+		{
+			delete[] buffer;
+			return E_HANDLE;
+		}
+		hResult = ReadData(hFile, pItem->offset, pItem->size, buffer);
+		CloseHandle(hFile);
+		for (size_t j = 0; j < FP_STORE_PAL_OPTIONAL; j++)
+		{
+			CopyMemory((PPALETTEENTRY)(pItem->pData) + j, buffer + 3 * j, 3);
+			((PPALETTEENTRY)(pItem->pData) + j)->peFlags = 0;
+		}
+		if (SUCCEEDED(hResult))
+		{
+			pItem->isCompleted = TRUE;
+		}
+	}
+	delete[] buffer;
+	if (NULL != lpCallback)
+	{
+		lpCallback(pItemList);
+	}
 	return S_OK;
 }
 
@@ -147,17 +202,10 @@ static HRESULT __fastcall ReadData(HANDLE hFile, LONG dwOffset, DWORD dwSize, LP
 	BOOL bFlag;
 	dwResult = SetFilePointer(hFile, dwOffset, NULL, FILE_BEGIN);
 	if (INVALID_SET_FILE_POINTER == dwResult)
-	{
-		ErrorHandler(ERROR_RES_Unknown, _T(__FUNCTION__));
 		return E_FAIL;
-	}
 	bFlag = ReadFile(hFile, lpBuffer, dwSize, &dwResult, NULL);
 	if (FALSE == bFlag)
-	{
-		FP_DEBUG_MSG(_T("Can't read file, errno:%d\n"), GetLastError());
-		ErrorHandler(ERROR_RES_Unknown, _T(__FUNCTION__));
 		return E_FAIL;
-	}
 	return S_OK;
 }
 

@@ -6,3 +6,4 @@ EXPORTS
 InitGameEnv @ 1;
 ReleaseGameEnv @ 2;
 InitGraphics @ 3;
+ReleaseGraphics @ 4;
