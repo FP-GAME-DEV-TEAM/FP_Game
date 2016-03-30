@@ -33,7 +33,7 @@
 /* This macro is for dll debugging */
 #ifndef FP_MODULE_DEBUG
 #define FP_MODULE_DEBUG
-#define FP_DEBUG_PATH _T("F:\\FantasyParadise\\Game\\test.exe")
+#define FP_DEBUG_PATH _T("F:\\Programming\\CGames\\FPMainWorkspace\\GameTest\\Null.exe")
 #endif 
 
 /* This macro is for project debugging */
