@@ -10,6 +10,7 @@
 #include "FPDataType.h"
 #include "FPFunction.h"
 #include "FPDump.h"
+#include "FPUtility.h"
 
 static HRESULT FPFileRead(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpCallback);
 static HRESULT FPFileWrite(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpCallback);
@@ -213,3 +214,96 @@ static HRESULT __fastcall WriteData(HANDLE hFile, LPVOID lpBuffer, LONG dwOffset
 {
 	return S_OK;
 }
+
+static HRESULT __fastcall EncryptData()
+{
+	return S_OK;
+}
+
+//static HRESULT __fastcall DecryptData(LPBYTE lpData, DWORD dwSize, LPBYTE lpBuffer)
+//{
+//	MemoryStream *pMs = new MemoryStream();
+//	byte tmp, key;
+//	int num, i = 0x10;
+//	pMs->Write(buffer, 0, i);
+//	while (i < buffer.Length)
+//	{
+//		key = (byte)(buffer[i] & 0xf0);
+//		num = buffer[i] & (byte)0x0f;
+//		i++;
+//		switch (key)
+//		{
+//		case 0x00:
+//			ms.Write(buffer, i, num);
+//			i += num;
+//			break;
+//		case 0x10:
+//			num = num * 0x100 + buffer[i];
+//			i++;
+//			ms.Write(buffer, i, num);
+//			i += num;
+//			break;
+//		case 0x20:
+//			num = num * 0x10000 + buffer[i] * 0x100 + buffer[i + 1];
+//			i += 2;
+//			ms.Write(buffer, i, num);
+//			i += num;
+//			break;
+//		case 0x80:
+//			tmp = buffer[i];
+//			for (int j = 0; j < num; j++)
+//			{
+//				ms.WriteByte(tmp);
+//			}
+//			i++;
+//			break;
+//		case 0x90:
+//			tmp = buffer[i];
+//			num = num * 0x100 + buffer[i + 1];
+//			for (int j = 0; j < num; j++)
+//			{
+//				ms.WriteByte(tmp);
+//			}
+//			i += 2;
+//			break;
+//		case 0xa0:
+//			tmp = buffer[i];
+//			num = num * 0x10000 + buffer[i + 1] * 0x100 + buffer[i + 2];
+//			for (int j = 0; j < num; j++)
+//			{
+//				ms.WriteByte(tmp);
+//			}
+//			i += 3;
+//			break;
+//		case 0xc0:
+//			tmp = (byte)0x00; //±³¾°É«
+//			for (int j = 0; j < num; j++)
+//			{
+//				ms.WriteByte(tmp);
+//			}
+//			break;
+//		case 0xd0:
+//			tmp = (byte)0x00; //±³¾°É«
+//			num = num * 0x100 + buffer[i];
+//			i++;
+//			for (int j = 0; j < num; j++)
+//			{
+//				ms.WriteByte(tmp);
+//			}
+//			break;
+//		case 0xe0:
+//			tmp = (byte)0x00; //±³¾°É«
+//			num = num * 0x10000 + buffer[i] * 0x100 + buffer[i + 1];
+//			i += 2;
+//			for (int j = 0; j < num; j++)
+//			{
+//				ms.WriteByte(tmp);
+//			}
+//			break;
+//		default:
+//			ms.WriteByte(buffer[i]);
+//			break;
+//		}
+//	}
+//	return S_OK;
+//}
