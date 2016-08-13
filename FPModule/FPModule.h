@@ -54,6 +54,12 @@
 // FP project own message base value
 #define FPMSG_BASE						(WM_USER)
 
+// Window message
+#define FPMSG_WINDOW_NOP				(FPMSG_BASE + 0x0000)
+
+#define FPMSG_WINDOW_DEBUG_MSG			(FPMSG_BASE + 0x0010)
+#define FPMSG_WINDOW_DEBUG_DLG			(FPMSG_BASE + 0x0011)
+
 // Thread message
 #define FPMSG_THREAD_START				(FPMSG_BASE + 0x0100)
 #define FPMSG_THREAD_STOP				(FPMSG_BASE + 0x0101)
@@ -93,6 +99,8 @@
 #define FP_STORE_PAL_COUNT 256
 #define FP_STORE_PAL_DEFAULT 32
 #define FP_STORE_PAL_OPTIONAL 224
+#define FP_STORE_PAL_FRONT 16
+#define FP_STORE_PAL_BACK 16
 
 //相对路径和文件名宏定义
 #define FP_PATH_BIN _T("\\bin") //资源文件相对路径
@@ -180,7 +188,8 @@ typedef struct tagFPImage
 	LONG height; //图片的高度
 	LONG offsetX; //图片显示时的X轴偏移
 	LONG offsetY; //图片显示时的Y轴偏移
-	LPBYTE *pData; //图片像素填充数据
+	LONG lentgh; //图片像素数据长度
+	DWORD data[1]; //图片像素填充数据
 } FPImage, *PFPImage;
 
 

@@ -4,6 +4,9 @@
 #include "stdafx.h"
 #include "FPClient.h"
 
+// Just for testing
+void TestPrintPalette(LONG id, PALETTEENTRY *pArray);
+
 LRESULT CALLBACK MainProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	HDC hdc;
@@ -16,6 +19,11 @@ LRESULT CALLBACK MainProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 		case IDM_TOGGLEDISPLAYMODE:
 			// Toggle the fullscreen/window mode
+			// Test switch palette
+			if (fWindowed)
+				gameGraphics->SwitchPalette(1); //≤‚ ‘IO
+			else
+				gameGraphics->SwitchPalette(2); //≤‚ ‘IO
 			fWindowed = !fWindowed;
 			if (FAILED(InitGameDisplay(fWindowed)))
 			{
@@ -29,10 +37,15 @@ LRESULT CALLBACK MainProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					PostMessage(hWnd, WM_CLOSE, 0, 0);
 					FP_DEBUG_MSG(_T("The game process is forced to quit!\n"));
 				}
+				MessageBox(hWnd, _T("Switched to former display mode."), _T("Error"), MB_ICONWARNING | MB_OK);
 			}
 			return 0L;
 		}
 		break; // Continue with default processing
+
+	case FPMSG_WINDOW_DEBUG_MSG:
+		TestPrintPalette((LONG)wParam, (PALETTEENTRY *)lParam);
+		break;
 
 	case WM_PAINT:
 		hdc = BeginPaint(hWnd, &ps);
@@ -64,4 +77,18 @@ LRESULT CALLBACK MainProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		return DefWindowProc(hWnd, message, wParam, lParam);
 	}
 	return 0;
+}
+
+void TestPrintPalette(LONG id, PALETTEENTRY *pArray)
+{
+	FP_DEBUG_MSG(_T("Palette %d Data:"), id);
+	for (int i = 0; i < FP_STORE_PAL_OPTIONAL; i++)
+	{
+		if (i % 4 == 0)
+		{
+			FP_DEBUG_MSG(_T("\n"));
+		}
+		FP_DEBUG_MSG(_T(" 0x%08x "), pArray[i]);
+	}
+	FP_DEBUG_MSG(_T("\n"));
 }

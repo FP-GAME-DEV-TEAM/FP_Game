@@ -6,6 +6,9 @@
 extern GameEnv *mainEnv;
 
 TCHAR exeFilePath[MAX_PATH + 1] = { 0 };
+HWND hMainWnd = NULL; // Main window handle
+
+BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam);
 
 BOOL APIENTRY DllMain(
 	HMODULE hModule,
@@ -13,6 +16,7 @@ BOOL APIENTRY DllMain(
 	LPVOID lpReserved
 	)
 {
+	DWORD dwCurrentProcessId = GetCurrentProcessId();
 	switch (dwReason)
 	{
 	case DLL_PROCESS_ATTACH:
@@ -23,6 +27,10 @@ BOOL APIENTRY DllMain(
 		GetModuleFileName(NULL, exeFilePath, MAX_PATH); //得到模块完整路径
 #endif
 		(_tcsrchr(exeFilePath, _T('\\')))[0] = 0; //删除文件名，只获得路径（不包含结尾反斜杠）
+		if (!EnumWindows(EnumWindowsProc, (LPARAM)&dwCurrentProcessId))
+		{
+			hMainWnd = (HWND)dwCurrentProcessId;
+		}
 		FP_DEBUG_MSG(_T("FP DLL module attached.\n"));
 		break;
 
@@ -32,6 +40,19 @@ BOOL APIENTRY DllMain(
 
 	default:
 		break;
+	}
+	return TRUE;
+}
+
+BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam)
+{
+	DWORD dwCurProcessId = *((DWORD*)lParam);
+	DWORD dwProcessId = 0;
+	GetWindowThreadProcessId(hwnd, &dwProcessId);
+	if (dwProcessId == dwCurProcessId && GetParent(hwnd) == NULL)
+	{
+		*((HWND *)lParam) = hwnd;
+		return FALSE;
 	}
 	return TRUE;
 }

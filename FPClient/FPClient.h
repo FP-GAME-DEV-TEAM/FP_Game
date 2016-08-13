@@ -48,6 +48,9 @@ extern BOOL fWindowed;
 extern BOOL fActive;
 extern LPDIRECTDRAW7 lpdd;
 
+extern IGameEnv *gameEnv;
+extern IGameGraphics *gameGraphics;
+
 // Declarations of external functions
 extern HRESULT InitGameDisplay(BOOL flag);
 extern VOID DestroyGameDisplay();

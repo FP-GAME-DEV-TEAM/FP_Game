@@ -141,7 +141,7 @@ static HRESULT FPFileRead(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpC
 
 static HRESULT FPFileWrite(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpCallback)
 {
-	return S_OK;
+
 }
 
 static HRESULT FPPalettePreload(const PPalLib pPal, PIOList pItemList, FP_THREAD_ROUTINE lpCallback)
@@ -220,90 +220,47 @@ static HRESULT __fastcall EncryptData()
 	return S_OK;
 }
 
-//static HRESULT __fastcall DecryptData(LPBYTE lpData, DWORD dwSize, LPBYTE lpBuffer)
-//{
-//	MemoryStream *pMs = new MemoryStream();
-//	byte tmp, key;
-//	int num, i = 0x10;
-//	pMs->Write(buffer, 0, i);
-//	while (i < buffer.Length)
-//	{
-//		key = (byte)(buffer[i] & 0xf0);
-//		num = buffer[i] & (byte)0x0f;
-//		i++;
-//		switch (key)
-//		{
-//		case 0x00:
-//			ms.Write(buffer, i, num);
-//			i += num;
-//			break;
-//		case 0x10:
-//			num = num * 0x100 + buffer[i];
-//			i++;
-//			ms.Write(buffer, i, num);
-//			i += num;
-//			break;
-//		case 0x20:
-//			num = num * 0x10000 + buffer[i] * 0x100 + buffer[i + 1];
-//			i += 2;
-//			ms.Write(buffer, i, num);
-//			i += num;
-//			break;
-//		case 0x80:
-//			tmp = buffer[i];
-//			for (int j = 0; j < num; j++)
-//			{
-//				ms.WriteByte(tmp);
-//			}
-//			i++;
-//			break;
-//		case 0x90:
-//			tmp = buffer[i];
-//			num = num * 0x100 + buffer[i + 1];
-//			for (int j = 0; j < num; j++)
-//			{
-//				ms.WriteByte(tmp);
-//			}
-//			i += 2;
-//			break;
-//		case 0xa0:
-//			tmp = buffer[i];
-//			num = num * 0x10000 + buffer[i + 1] * 0x100 + buffer[i + 2];
-//			for (int j = 0; j < num; j++)
-//			{
-//				ms.WriteByte(tmp);
-//			}
-//			i += 3;
-//			break;
-//		case 0xc0:
-//			tmp = (byte)0x00; //±³¾°É«
-//			for (int j = 0; j < num; j++)
-//			{
-//				ms.WriteByte(tmp);
-//			}
-//			break;
-//		case 0xd0:
-//			tmp = (byte)0x00; //±³¾°É«
-//			num = num * 0x100 + buffer[i];
-//			i++;
-//			for (int j = 0; j < num; j++)
-//			{
-//				ms.WriteByte(tmp);
-//			}
-//			break;
-//		case 0xe0:
-//			tmp = (byte)0x00; //±³¾°É«
-//			num = num * 0x10000 + buffer[i] * 0x100 + buffer[i + 1];
-//			i += 2;
-//			for (int j = 0; j < num; j++)
-//			{
-//				ms.WriteByte(tmp);
-//			}
-//			break;
-//		default:
-//			ms.WriteByte(buffer[i]);
-//			break;
-//		}
-//	}
-//	return S_OK;
-//}
+static HRESULT __fastcall DecryptData(LPBYTE lpData, DWORD dwSize, LPBYTE *lppBuffer, LPDWORD lpdwLen)
+{
+	MemoryBuffer buffer(dwSize * 4);
+	BOOL repeat, blank;
+	DWORD count, n, i;
+	BYTE step, key;
+	n = 0;
+	while (n < dwSize)
+	{
+		key = lpData[n] & 0xF0;
+		count = lpData[n] & 0x0F;
+		repeat = (key & 0xC0) & 0x80 == 0 ? FALSE : TRUE;
+		blank = (key & 0xC0) & 0x40 == 0 ? FALSE : TRUE;
+		step = (key & 0x30) >> 4;
+		++n;
+		if (repeat)
+		{
+			if (blank)
+				key = 0x00;
+			else
+				key = lpData[n++];
+			for (i = 0; i < step; i++)
+			{
+				count <<= 8;
+				count += lpData[n + i];
+			}
+			buffer.Append(key, count);
+			n += step;
+		}
+		else
+		{
+			for (i = 0; i < step; i++)
+			{
+				count <<= 8;
+				count += lpData[n + i];
+			}
+			n += step;
+			buffer.Append(&lpData[n], count);
+			n += count;
+		}
+	}
+	*lppBuffer = buffer.CopyOut((int &)*lpdwLen);
+	return S_OK;
+}

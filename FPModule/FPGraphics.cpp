@@ -13,6 +13,8 @@
 
 GameGraphics *mainGraphics = NULL;
 
+extern HWND hMainWnd;
+
 //=====================================
 // GameGraphics类的实现
 //
@@ -132,21 +134,21 @@ HRESULT GameGraphics::GetAnimeById(LONG id, LPVOID pData)
 
 HRESULT GameGraphics::SwitchPalette(LONG id)
 {
-	static BOOL flag = TRUE;
-	if (this->mPaletteOptional[id][0].peRed != 0 && flag)
+	DWORD i, n=0;
+	for (i = 0; i < FP_STORE_PAL_FRONT; i++)
 	{
-		flag = FALSE;
-		FP_DEBUG_MSG(_T("Palette %d Data:"), id);
-		for (size_t i = 0; i < FP_STORE_PAL_OPTIONAL; i++)
-		{
-			if (i % 4 == 0)
-			{
-				FP_DEBUG_MSG(_T("\n"));
-			}
-			FP_DEBUG_MSG(_T(" 0x%08x "), this->mPaletteOptional[id][i]);
-		}
-		FP_DEBUG_MSG(_T("\n"));
+		mPalette[n++] = mPaletteDefault[i];
 	}
+	for (i = 0; i < FP_STORE_PAL_OPTIONAL; i++)
+	{
+		mPalette[n++] = mPaletteOptional[id][i];
+	}
+	for (i = 0; i < FP_STORE_PAL_BACK; i++)
+	{
+		mPalette[n++] = mPaletteDefault[FP_STORE_PAL_FRONT + i];
+	}
+	PostMessage(hMainWnd, FPMSG_WINDOW_DEBUG_MSG, (WPARAM)id, (LPARAM)&mPalette[16]);
+	FP_DEBUG_MSG(_T("Palette switched to No.%d.\n"), id);
 	return S_OK;
 }
 

@@ -19,7 +19,8 @@ HRESULT WINAPI StartIOThreads()
 	DWORD dwExitCode = 0;
 	if (mainIOThread.hThread != NULL)
 	{
-		if (GetExitCodeThread(mainIOThread.hThread, &dwExitCode) && STILL_ACTIVE == dwExitCode)
+		GetExitCodeThread(mainIOThread.hThread, &dwExitCode);
+		if (STILL_ACTIVE == dwExitCode)
 		{
 			return E_HANDLE;
 		}

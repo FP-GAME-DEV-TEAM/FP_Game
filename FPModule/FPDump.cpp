@@ -13,6 +13,7 @@
 //资源错误链表
 static ResError gErrorList = {ERROR_RES_Unknown, NULL, NULL};
 static PResError gpLastErr = &gErrorList;
+static tstring gLastErrorInfo;
 
 //=====================================
 //错误处理函数的实现
@@ -32,7 +33,12 @@ ResError WINAPI GetResError()
 	return *gpLastErr;
 }
 
-FP_MODULE_API void WINAPI PrintError(ErrorRes type)
+FP_MODULE_API void WINAPI PrintErrors(ErrorRes type)
 {
 
+}
+
+FP_MODULE_API tstring WINAPI GetLastErrorInfo()
+{
+	return gLastErrorInfo;
 }

@@ -73,8 +73,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	wcex.hIconSm = NULL;
 	if (!RegisterClassEx(&wcex))
 	{
-		MessageBox(hMainWnd, _T("Fail to register the window class!"), _T("Error"), MB_ICONERROR | MB_OK);
-		return -1;
+		return 0;
 	}
 
 	// Perform application initialization:
@@ -82,7 +81,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	if (!InitWindow(nCmdShow, &hAccel))
 	{
 		MessageBox(hMainWnd, _T("Fail to initialize the window instance!"), _T("Error"), MB_ICONERROR | MB_OK);
-		return -2;
+		return -1;
 	}
 
 	// Start game logic
@@ -90,7 +89,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	if (FAILED(GameInit()))
 	{
 		MessageBox(hMainWnd, _T("Game starting failed!"), _T("Error"), MB_ICONERROR | MB_OK);
-		return -3;
+		return -2;
 	}
 
 	// Main message loop:
@@ -98,7 +97,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	if (!hMainTimer)
 	{
 		FP_DEBUG_MSG(_T("CreateWaitableTimer failed (%d)\n"), GetLastError());
-		return -4;
+		return -3;
 	}
 	LARGE_INTEGER liDueTime;
 	liDueTime.QuadPart = -1i64;
@@ -162,8 +161,6 @@ BOOL InitWindow(int nCmdShow, HACCEL *phAccel)
 
 HRESULT GameLoop()
 {
-	//²âÊÔIO
-	gameGraphics->SwitchPalette(2);
 	return S_OK;
 }
 

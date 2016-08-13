@@ -60,4 +60,5 @@ typedef struct tagIOError
 ResError WINAPI ErrorHandler(ErrorRes type, const LPTSTR funcName); //错误处理器
 ResError WINAPI GetResError(); //获得上一个错误
 
-FP_MODULE_API void WINAPI PrintError(ErrorRes type); //打印出某个类型的错误
+FP_MODULE_API void WINAPI PrintErrors(ErrorRes type); //打印出某个类型的全部错误
+FP_MODULE_API tstring WINAPI GetLastErrorInfo(); //得到最近一次错误信息
