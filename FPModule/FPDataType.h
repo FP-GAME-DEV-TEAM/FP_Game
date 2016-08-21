@@ -157,26 +157,38 @@ typedef struct tagGameRes
 //=====================================
 // IO Data Types
 // Sample: PostThreadMessage(ThreadId, IOType, IOReqList, CallbackFunc)
-// CallbackFunc: void (*func)(void)
+// CallbackFunc: UINT (*func)(LPVOID)
+// If maxSize>0, the inner union specify 'end' to indicate that the length of the data requested is unknown,
+// So we use this 'end' to be a terminator of the stream and 'size' will be the final data length,
+// Else the union specify 'size' to indicate that the length of the data requested is already specified.
 //
 
 typedef struct tagIOItem
 {
-	BOOL isCompleted;
+	DWORD maxSize;
 	DWORD offset;
 	union
 	{
 		DWORD size;
 		TCHAR end;
 	};
-	DWORD maxSize;
 	LPVOID pData;
 } IOItem, *PIOItem;
 
 typedef struct tagIOList
 {
+	BOOL isCompleted;
+	HANDLE hEvent;
 	LONG count;
 	PIOItem pList;
+
+	static tagIOList * WINAPI CreateIOList(LONG count, HANDLE param);
+	PIOItem SetIOListItem(LONG index, DWORD maxSize, DWORD offset, DWORD sizeEnd, LPVOID lpData);
+	virtual ~tagIOList();
+
+private:
+	tagIOList(){}
+	tagIOList(const tagIOList &other){}
 } IOList, *PIOList;
 
 
@@ -208,28 +220,31 @@ class GameGraphics : public IGameGraphics
 private:
 	static GameGraphics *pInstance; //单例对象
 
-	HANDLE hGraphicInfo; //图像目录对象
+	HANDLE hGraphicInfo; //图像索引对象
 	HANDLE hGraphicData; //图像数据对象
-	HANDLE hAnimeInfo; //动画目录对象
+	HANDLE hAnimeInfo; //动画索引对象
 	HANDLE hAnimeData; //动画数据对象
 	PALETTEENTRY mPalette[FP_STORE_PAL_COUNT]; //当前调色板
 	PALETTEENTRY mPaletteDefault[FP_STORE_PAL_DEFAULT]; //固定调色板数组表
 	PALETTEENTRY mPaletteOptional[FP_FILE_COUNT_PAL][FP_STORE_PAL_OPTIONAL]; //可变调色板数组表
 
 protected:
-	std::map<LONG, LPBYTE> mGraphicCache; //图像库数据缓存
-	std::map<LONG, LPBYTE> mAnimeCache; //图像库数据缓存
-	std::vector<GraphicInfo> mGraphicsList; //图像目录数据
-	std::vector<AnimeInfo> mAnimeList; //动画目录数据
+	std::map<LONG, FPImage> mGraphicCache; //图像数据缓存
+	std::map<LONG, LPBYTE> mAnimeCache; //动画数据缓存
+	std::vector<GraphicInfo> mGraphicList; //图像索引数据
+	std::vector<AnimeInfo> mAnimeList; //动画索引数据
 
 	GameGraphics(); //构造函数
 	virtual ~GameGraphics(void); //析构函数
+	static UINT CALLBACK GraphicsIOComplete(LPVOID pParam); //图像IO完成接口
 
 public:
 	static HRESULT WINAPI Create(const PBinLib pBin);
 	static VOID WINAPI Destroy();
 
 	HRESULT InitPalette(const PPalLib pPal); //加载调色板
+	HRESULT LoadGraphicInfo(); //加载图像索引文件
+	HRESULT LoadAnimeInfo(); //加载动画索引文件
 
 	HANDLE GetFileHandle(const UINT type) const;
 	HRESULT GetImageById(LONG id, LPVOID pData); //通过ID得到图片

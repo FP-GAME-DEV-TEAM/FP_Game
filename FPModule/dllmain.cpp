@@ -92,8 +92,10 @@ FP_MODULE_API HRESULT WINAPI InitGraphics(IGameGraphics **IGraphics)
 	if (SUCCEEDED(GameGraphics::Create(mainEnv->GetBinLib())))
 	{
 		*IGraphics = mainGraphics;
-		FP_DEBUG_MSG(_T("Game Graphics has been initialized.\n"));
 		mainGraphics->InitPalette(mainEnv->GetBinLib()->pLibPal);
+		mainGraphics->LoadGraphicInfo();
+		mainGraphics->LoadAnimeInfo();
+		FP_DEBUG_MSG(_T("Game Graphics has been initialized.\n"));
 		return S_OK;
 	}
 	return E_FAIL;

@@ -18,6 +18,8 @@ static HRESULT FPPalettePreload(const PPalLib pPal, PIOList pItemList, FP_THREAD
 
 static HRESULT __fastcall ReadData(HANDLE hFile, LONG dwOffset, DWORD dwSize, LPVOID lpBuffer);
 static HRESULT __fastcall WriteData(HANDLE hFile, LPVOID lpBuffer, LONG dwOffset, DWORD dwSize);
+static HRESULT __fastcall EncryptData();
+static HRESULT __fastcall DecryptData(LPBYTE lpData, DWORD dwSize, LPBYTE *lppBuffer, LPDWORD lpdwLen);
 
 UINT CALLBACK BinProc(HANDLE param)
 {
@@ -33,7 +35,7 @@ UINT CALLBACK BinProc(HANDLE param)
 	}
 	FP_DEBUG_MSG(_T("Game IO thread started.\n"));
 	mainIOThread.bRunning = TRUE;
-	// Main bin thread loop
+	// Main IO thread loop
 	hParam = NULL;
 	while (mainIOThread.bRunning)
 	{
@@ -72,9 +74,72 @@ UINT CALLBACK BinProc(HANDLE param)
 				break;
 			}
 		}
+		if (FAILED(hResult) && NULL != msg.wParam)
+		{
+			IOCompleteDefault(((PIOList)msg.wParam)->hEvent);
+		}
 	}
 	_endthreadex(0);
 	return 0;
+}
+
+PIOList WINAPI IOList::CreateIOList(LONG count, HANDLE event)
+{
+	PIOList list = new IOList();
+	list->isCompleted = FALSE;
+	list->hEvent = event;
+	list->count = count;
+	PIOItem items = new IOItem[count];
+	ZeroMemory(items, count * sizeof(IOItem));
+	list->pList = items;
+	return list;
+}
+
+PIOItem IOList::SetIOListItem(LONG index, DWORD maxSize, DWORD offset, DWORD sizeEnd, LPVOID lpData)
+{
+	if (index < 0 || index >= this->count)
+	{
+		return NULL;
+	}
+	PIOItem item = &(this->pList)[index];
+	if (maxSize > 0)
+	{
+		item->maxSize = maxSize;
+		item->offset = offset;
+		item->end = sizeEnd;
+		item->pData = NULL;
+	}
+	else
+	{
+		item->maxSize = 0;
+		item->offset = offset;
+		item->size = sizeEnd;
+		if (NULL == lpData)
+		{
+			lpData = new BYTE[sizeEnd];
+		}
+		item->pData = lpData;
+	}
+	return item;
+}
+
+IOList::~tagIOList()
+{
+	PIOItem item = this->pList;
+	delete[] item;
+}
+
+UINT CALLBACK IOCompleteDefault(LPVOID pParam)
+{
+	if (NULL == pParam)
+	{
+		return E_INVALIDARG;
+	}
+	if (!SetEvent(pParam))
+	{
+		return E_HANDLE;
+	}
+	return S_OK;
 }
 
 static HRESULT FPFileRead(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpCallback)
@@ -91,57 +156,58 @@ static HRESULT FPFileRead(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpC
 	{
 		return E_POINTER;
 	}
-	for (size_t i = 0; i < pItemList->count; i++)
+	for (LONG i = 0; i < pItemList->count; i++)
 	{
 		pItem = &pItemList->pList[i];
 		if (NULL == pItem)
 		{
-			return E_FAIL;
+			return E_POINTER;
 		}
-		if (!pItem->isCompleted)
+		if (pItem->maxSize > 0)
 		{
-			if (pItem->maxSize > 0)
+			lpTempStr = new TCHAR[pItem->maxSize + 1];
+			ZeroMemory(lpTempStr, sizeof(TCHAR)*(pItem->maxSize + 1));
+			hResult = ReadData(hFile, pItem->offset, sizeof(TCHAR)* pItem->maxSize, lpTempStr);
+			if (FAILED(hResult))
 			{
-				lpTempStr = new TCHAR[pItem->maxSize + 1];
-				ZeroMemory(lpTempStr, sizeof(TCHAR)*(length + 1));
-				hResult = ReadData(hFile, pItem->offset, sizeof(TCHAR)* pItem->maxSize, lpTempStr);
-				if (FAILED(hResult))
-				{
-					delete[] lpTempStr;
-					lpTempStr = NULL;
-					continue;
-				}
-				length = _tcschr((PTCHAR)lpTempStr, pItem->end) - lpTempStr;
-				if (length < 0)
-				{
-					length = pItem->maxSize;
-				}
-				pItem->size = length;
-				pItem->pData = new TCHAR[length + 1];
-				ZeroMemory(pItem->pData, sizeof(TCHAR)*(length + 1));
-				CopyMemory(pItem->pData, lpTempStr, sizeof(TCHAR)*(length + 1));
 				delete[] lpTempStr;
+				lpTempStr = NULL;
+				continue;
 			}
-			else
+			length = _tcschr((PTCHAR)lpTempStr, pItem->end) - lpTempStr;
+			if (length < 0)
 			{
-				hResult = ReadData(hFile, pItem->offset, pItem->size, pItem->pData);
+				length = pItem->maxSize;
 			}
-			if (SUCCEEDED(hResult))
-			{
-				pItem->isCompleted = TRUE;
-			}
+			pItem->size = length;
+			pItem->pData = new TCHAR[length + 1];
+			ZeroMemory(pItem->pData, sizeof(TCHAR)*(length + 1));
+			CopyMemory(pItem->pData, lpTempStr, sizeof(TCHAR)*(length + 1));
+			delete[] lpTempStr;
+		}
+		else
+		{
+			hResult = ReadData(hFile, pItem->offset, pItem->size, pItem->pData);
+		}
+		if (FAILED(hResult))
+		{
+			break;
 		}
 	}
-	if (NULL != lpCallback)
+	if (SUCCEEDED(hResult))
 	{
-		lpCallback(pItemList);
+		pItemList->isCompleted = TRUE;
+		if (NULL != lpCallback)
+		{
+			lpCallback(pItemList);
+		}
 	}
-	return S_OK;
+	return hResult;
 }
 
 static HRESULT FPFileWrite(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpCallback)
 {
-
+	return S_OK;
 }
 
 static HRESULT FPPalettePreload(const PPalLib pPal, PIOList pItemList, FP_THREAD_ROUTINE lpCallback)
@@ -161,10 +227,10 @@ static HRESULT FPPalettePreload(const PPalLib pPal, PIOList pItemList, FP_THREAD
 	}
 	if (pItemList->count != pPal->sum)
 	{
-		return E_FAIL;
+		return E_POINTER;
 	}
 	buffer = new BYTE[FP_FILE_SIZE_PAL];
-	for (size_t i = 0; i < pItemList->count; i++)
+	for (LONG i = 0; i < pItemList->count; i++)
 	{
 		strPath = pPal->palPath;
 		strPath += _T("\\");
@@ -179,22 +245,26 @@ static HRESULT FPPalettePreload(const PPalLib pPal, PIOList pItemList, FP_THREAD
 		}
 		hResult = ReadData(hFile, pItem->offset, pItem->size, buffer);
 		CloseHandle(hFile);
-		for (size_t j = 0; j < FP_STORE_PAL_OPTIONAL; j++)
+		for (LONG j = 0; j < FP_STORE_PAL_OPTIONAL; j++)
 		{
 			CopyMemory((PPALETTEENTRY)(pItem->pData) + j, buffer + 3 * j, 3);
 			((PPALETTEENTRY)(pItem->pData) + j)->peFlags = 0;
 		}
-		if (SUCCEEDED(hResult))
+		if (FAILED(hResult))
 		{
-			pItem->isCompleted = TRUE;
+			break;
 		}
 	}
 	delete[] buffer;
-	if (NULL != lpCallback)
+	if (SUCCEEDED(hResult))
 	{
-		lpCallback(pItemList);
+		pItemList->isCompleted = TRUE;
+		if (NULL != lpCallback)
+		{
+			lpCallback(pItemList);
+		}
 	}
-	return S_OK;
+	return hResult;
 }
 
 static HRESULT __fastcall ReadData(HANDLE hFile, LONG dwOffset, DWORD dwSize, LPVOID lpBuffer)
@@ -203,7 +273,7 @@ static HRESULT __fastcall ReadData(HANDLE hFile, LONG dwOffset, DWORD dwSize, LP
 	BOOL bFlag;
 	dwResult = SetFilePointer(hFile, dwOffset, NULL, FILE_BEGIN);
 	if (INVALID_SET_FILE_POINTER == dwResult)
-		return E_FAIL;
+		return E_HANDLE;
 	bFlag = ReadFile(hFile, lpBuffer, dwSize, &dwResult, NULL);
 	if (FALSE == bFlag)
 		return E_FAIL;

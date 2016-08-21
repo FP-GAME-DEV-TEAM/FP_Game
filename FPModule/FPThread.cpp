@@ -45,7 +45,7 @@ HRESULT WINAPI StartIOThreads()
 	}
 
 	//wait thread start event to avoid PostThreadMessage return errno:1444
-	WaitForSingleObject(hStartEvent, INFINITE);
+	WaitForSingleObject(hStartEvent, FP_THREAD_TIMEOUT);
 	CloseHandle(hStartEvent);
 	return S_OK;
 }
@@ -54,7 +54,7 @@ HRESULT WINAPI DestroyIOThreads()
 {
 	PostThreadMessage(mainIOThread.uThreadId, FPMSG_THREAD_STOP, 0, 0);
 	//wait thread end and then close handle
-	WaitForSingleObject(mainIOThread.hThread, INFINITE);
+	WaitForSingleObject(mainIOThread.hThread, FP_THREAD_TIMEOUT);
 	CloseHandle(mainIOThread.hThread);
 	FP_DEBUG_MSG(_T("Game IO thread stoped.\n"));
 	return S_OK;

@@ -26,5 +26,6 @@ FP_MODULE_API HRESULT WINAPI DGraphics(); //³õÊ¼»¯Í¼ÏñÄ£¿é
 //
 
 UINT CALLBACK BinProc(HANDLE param);
+UINT CALLBACK IOCompleteDefault(LPVOID pParam);
 HRESULT WINAPI StartIOThreads();
 HRESULT WINAPI DestroyIOThreads();

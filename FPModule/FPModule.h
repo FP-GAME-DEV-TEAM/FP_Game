@@ -102,6 +102,12 @@
 #define FP_STORE_PAL_FRONT 16
 #define FP_STORE_PAL_BACK 16
 
+#ifdef FP_PROJECT_DEBUG
+#define FP_THREAD_TIMEOUT INFINITE
+#else
+#define FP_THREAD_TIMEOUT 10000L
+#endif
+
 //相对路径和文件名宏定义
 #define FP_PATH_BIN _T("\\bin") //资源文件相对路径
 #define FP_PATH_PAL _T("\\pal") //调色板文件相对路径
@@ -123,11 +129,21 @@
 #define FP_FILE_ANIME_INFO _T("AnimeInfo_") //动画字典文件名
 #define FP_FILE_ANIME_DATA _T("AnimeData_") //动画数据文件名
 
-#define FP_HANDLE_GAME_CONFIG 0x0000 //游戏配置句柄编号
+//文件后缀宏定义
+#define FP_FILE_SUFFIX_BIN _T(".bin") //图像资源文件后缀
+#define FP_FILE_SUFFIX_DAT _T(".dat") //数据配置文件后缀
+#define FP_FILE_SUFFIX_PAL _T(".fgp") //调色板文件后缀
+#define FP_FILE_SUFFIX_LOG _T(".log") //日志文件后缀
+#define FP_FILE_SUFFIX_MAP _T(".map") //地图文件后缀
+#define FP_FILE_SUFFIX_MP3 _T(".mp3") //背景音乐文件后缀
+#define FP_FILE_SUFFIX_WAV _T(".wav") //音效文件后缀
+
+//文件对应的HANDLE掩码
+#define FP_HANDLE_GRAPHIC_DATA 0x0000 //图像数据句柄编号
 #define FP_HANDLE_GRAPHIC_INFO 0x0001 //图像字典句柄编号
-#define FP_HANDLE_GRAPHIC_DATA 0x0002 //图像数据句柄编号
+#define FP_HANDLE_ANIME_DATA 0x0002 //动画数据句柄编号
 #define FP_HANDLE_ANIME_INFO 0x0003 //动画字典句柄编号
-#define FP_HANDLE_ANIME_DATA 0x0004 //动画数据句柄编号
+
 
 //调色板文件宏定义
 #define FP_PALETTE_DAY		palet_00
@@ -171,15 +187,6 @@ typedef enum tagPalette
 	palet_17 = 17,
 } Palette;
 
-//文件后缀宏定义
-#define FP_FILE_SUFFIX_BIN _T(".bin") //图像资源文件后缀
-#define FP_FILE_SUFFIX_DAT _T(".dat") //数据配置文件后缀
-#define FP_FILE_SUFFIX_PAL _T(".fgp") //调色板文件后缀
-#define FP_FILE_SUFFIX_LOG _T(".log") //日志文件后缀
-#define FP_FILE_SUFFIX_MAP _T(".map") //地图文件后缀
-#define FP_FILE_SUFFIX_MP3 _T(".mp3") //背景音乐文件后缀
-#define FP_FILE_SUFFIX_WAV _T(".wav") //音效文件后缀
-
 
 //可以直接显示的图片
 typedef struct tagFPImage
@@ -188,9 +195,24 @@ typedef struct tagFPImage
 	LONG height; //图片的高度
 	LONG offsetX; //图片显示时的X轴偏移
 	LONG offsetY; //图片显示时的Y轴偏移
-	LONG lentgh; //图片像素数据长度
+	DWORD lentgh; //图片像素数据长度
 	DWORD data[1]; //图片像素填充数据
 } FPImage, *PFPImage;
+
+//可以直接播放的动画帧
+typedef struct tagFPFrame
+{
+	DWORD duration;
+	DWORD count;
+	LONG index[1];
+} FPFrame, *PFPFrame;
+
+//可以直接播放的动画
+typedef struct tagFPMotion
+{
+	BOOL isLoop[20];
+	PFPFrame frame[8][20];
+} FPMotion, *PFPMotion;
 
 
 //=====================================

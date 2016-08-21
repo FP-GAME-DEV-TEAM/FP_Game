@@ -8,6 +8,7 @@
 
 #include "stdafx.h"
 #include "FPDataType.h"
+#include "FPFunction.h"
 #include "FPDump.h"
 
 
@@ -99,19 +100,30 @@ VOID WINAPI GameGraphics::Destroy()
 	SAFE_DELETE(pInstance);
 }
 
+UINT CALLBACK GameGraphics::GraphicsIOComplete(LPVOID pParam)
+{
+	if (NULL == pParam)
+	{
+		return E_INVALIDARG;
+	}
+	PIOList pItemList = (PIOList)pParam;
+	return IOCompleteDefault(pItemList->hEvent);
+}
+
 HANDLE GameGraphics::GetFileHandle(const UINT type) const
 {
 	HANDLE handle = NULL;
-	switch (type)
+	DWORD id = type & 0x000000ff;
+	switch (id)
 	{
 	case FP_HANDLE_GRAPHIC_DATA:
 		handle = this->hGraphicData;
 		break;
-	case FP_HANDLE_ANIME_DATA:
-		handle = this->hAnimeData;
-		break;
 	case FP_HANDLE_GRAPHIC_INFO:
 		handle = this->hGraphicInfo;
+		break;
+	case FP_HANDLE_ANIME_DATA:
+		handle = this->hAnimeData;
 		break;
 	case FP_HANDLE_ANIME_INFO:
 		handle = this->hAnimeInfo;
@@ -124,6 +136,7 @@ HANDLE GameGraphics::GetFileHandle(const UINT type) const
 
 HRESULT GameGraphics::GetImageById(LONG id, LPVOID pData)
 {
+	
 	return NULL;
 }
 
@@ -152,17 +165,9 @@ HRESULT GameGraphics::SwitchPalette(LONG id)
 	return S_OK;
 }
 
-static UINT CALLBACK FreeIOList(LPVOID pParam)
-{
-	PIOList list = (PIOList)pParam;
-	PIOItem item = list->pList;
-	delete[] item;
-	delete list;
-	return 0;
-}
-
 HRESULT GameGraphics::InitPalette(const PPalLib pPal)
 {
+	HRESULT hResult;
 	DWORD n, count;
 	tstring filePath = pPal->palPath;
 	tstring tmpPath;
@@ -205,18 +210,88 @@ HRESULT GameGraphics::InitPalette(const PPalLib pPal)
 	FillMemory(&mPaletteDefault[n++], sizeof(PALETTEENTRY), 0x00ffffff);
 
 	//可变调色板的载入
-	PIOList list = new IOList();
-	list->count = FP_FILE_COUNT_PAL;
-	PIOItem item = new IOItem[FP_FILE_COUNT_PAL];
-	for (n = 0; n < FP_FILE_COUNT_PAL; n++)
+	HANDLE hDoneEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+	PIOList list = IOList::CreateIOList(FP_FILE_COUNT_PAL, hDoneEvent);
+	for (n = 0; n < list->count; n++)
 	{
-		ZeroMemory(&item[n], sizeof(IOItem));
-		item[n].isCompleted = FALSE;
-		item[n].offset = 0;
-		item[n].size = FP_FILE_SIZE_PAL;
-		item[n].pData = mPaletteOptional[n];
+		list->SetIOListItem(n, 0, 0, FP_FILE_SIZE_PAL, mPaletteOptional[n]);
 	}
-	list->pList = item;
-	PostThreadMessage(mainIOThread.uThreadId, FPMSG_IO_READ_PALETTE, (WPARAM)list, (LPARAM)FreeIOList);
-	return S_OK;
+	PostThreadMessage(mainIOThread.uThreadId, FPMSG_IO_READ_PALETTE, (WPARAM)list, (LPARAM)GraphicsIOComplete);
+	if (WaitForSingleObject(hDoneEvent, FP_THREAD_TIMEOUT) == WAIT_OBJECT_0)
+	{
+		FP_DEBUG_MSG(_T("Palette all loaded.\n"));
+		hResult = S_OK;
+	}
+	else
+	{
+		ErrorHandler(ERROR_RES_RequestTimeout, _T(__FUNCTION__));
+		hResult = E_HANDLE;
+	}
+	delete list;
+	CloseHandle(hDoneEvent);
+	return hResult;
+}
+
+HRESULT GameGraphics::LoadGraphicInfo()
+{
+	HRESULT hResult;
+	HANDLE hFile = GetFileHandle(FP_HANDLE_GRAPHIC_INFO);
+	DWORD dwSize = GetFileSize(hFile, NULL);
+	DWORD dwCount = 0;
+	if (dwSize % sizeof(GraphicInfo) != 0)
+	{
+		ErrorHandler(ERROR_RES_DigitalMismatch, _T(__FUNCTION__));
+		return E_FAIL;
+	}
+	dwCount = dwSize / sizeof(GraphicInfo);
+	mGraphicList.resize(dwCount);
+	HANDLE hDoneEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+	PIOList list = IOList::CreateIOList(1, hDoneEvent);
+	list->SetIOListItem(0, 0, 0, dwSize, &mGraphicList[0]);
+	PostThreadMessage(mainIOThread.uThreadId, FPMSG_IO_READ_IMAGEINFO, (WPARAM)list, (LPARAM)GraphicsIOComplete);
+	if (WaitForSingleObject(hDoneEvent, FP_THREAD_TIMEOUT) == WAIT_OBJECT_0)
+	{
+		FP_DEBUG_MSG(_T("Graphic info loaded.\n"));
+		hResult = S_OK;
+	}
+	else
+	{
+		ErrorHandler(ERROR_RES_RequestTimeout, _T(__FUNCTION__));
+		hResult = E_HANDLE;
+	}
+	delete list;
+	CloseHandle(hDoneEvent);
+	return hResult;
+}
+
+HRESULT GameGraphics::LoadAnimeInfo()
+{
+	HRESULT hResult;
+	HANDLE hFile = GetFileHandle(FP_HANDLE_ANIME_INFO);
+	DWORD dwSize = GetFileSize(hFile, NULL);
+	DWORD dwCount = 0;
+	if (dwSize % sizeof(AnimeInfo) != 0)
+	{
+		ErrorHandler(ERROR_RES_DigitalMismatch, _T(__FUNCTION__));
+		return E_FAIL;
+	}
+	dwCount = dwSize / sizeof(AnimeInfo);
+	mAnimeList.resize(dwCount);
+	HANDLE hDoneEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+	PIOList list = IOList::CreateIOList(1, hDoneEvent);
+	list->SetIOListItem(0, 0, 0, dwSize, &mAnimeList[0]);
+	PostThreadMessage(mainIOThread.uThreadId, FPMSG_IO_READ_ANIMEINFO, (WPARAM)list, (LPARAM)GraphicsIOComplete);
+	if (WaitForSingleObject(hDoneEvent, FP_THREAD_TIMEOUT) == WAIT_OBJECT_0)
+	{
+		FP_DEBUG_MSG(_T("Anime info loaded.\n"));
+		hResult = S_OK;
+	}
+	else
+	{
+		ErrorHandler(ERROR_RES_RequestTimeout, _T(__FUNCTION__));
+		hResult = E_HANDLE;
+	}
+	delete list;
+	CloseHandle(hDoneEvent);
+	return hResult;
 }

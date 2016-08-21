@@ -25,6 +25,7 @@ typedef enum tagErrorRes
 	ERROR_RES_FilesSumMismatch = 5, //文件个数不匹配
 	ERROR_RES_DateTimeMismatch = 6, //修改日期匹配不通过
 	ERROR_RES_DigitalMismatch = 7, //文件校验失败
+	ERROR_RES_RequestTimeout = 8, //请求超时
 } ErrorRes;
 
 //资源错误信息
