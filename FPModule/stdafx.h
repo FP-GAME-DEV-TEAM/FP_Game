@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <fstream>
 #include <vector>
+#include <deque>
 #include <map>
 #include <set>
 

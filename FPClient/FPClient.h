@@ -32,6 +32,12 @@
 #define STAGE_DEFAULT_WIDTH			800
 #define STAGE_DEFAULT_HEIGHT		600
 
+#define STAGE_WINDOW_WIDTH			768
+#define STAGE_WINDOW_HEIGHT			576
+
+#define STAGE_BUFFER_WIDTH			1024
+#define STAGE_BUFFER_HEIGHT			768
+
 /* Color format - Bits per pixel */
 #define STAGE_BPP_INDEX				8
 #define STAGE_BPP_LOW				16

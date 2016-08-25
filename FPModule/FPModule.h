@@ -202,17 +202,17 @@ typedef struct tagFPImage
 //可以直接播放的动画帧
 typedef struct tagFPFrame
 {
-	DWORD duration;
-	DWORD count;
-	LONG index[1];
+	DWORD duration; //所有动画帧播放一遍耗时
+	DWORD count; //动画帧总数
+	LONG index[1]; //帧数据开始
 } FPFrame, *PFPFrame;
 
 //可以直接播放的动画
-typedef struct tagFPMotion
+typedef struct tagFPAction
 {
-	BOOL isLoop[20];
-	PFPFrame frame[8][20];
-} FPMotion, *PFPMotion;
+	BOOL isLoop[20]; //某个具体动作十分循环播放
+	PFPFrame frame[8][20]; //8个方向和20个动作所对应的帧数据
+} FPAction, *PFPAction;
 
 
 //=====================================
@@ -223,9 +223,9 @@ class FP_MODULE_API IGameGraphics
 {
 public:
 	virtual HANDLE GetFileHandle(const UINT type) const = 0; //得到文件操作句柄
-	virtual HRESULT GetImageById(LONG id, LPVOID pData) = 0; //通过ID得到图片
-	virtual HRESULT GetAnimeById(LONG id, LPVOID pData) = 0; //通过ID得到动画
-	virtual HRESULT SwitchPalette(LONG id) = 0; //更换调色板
+	virtual HRESULT GetImage(LONG id, const FPImage **pData) = 0; //通过ID得到图片
+	virtual HRESULT GetAction(LONG id, const FPAction **pData) = 0; //通过ID得到动画
+	virtual HRESULT GetPalette(LONG id, const PALETTEENTRY **pData) = 0; //更换调色板
 };
 
 

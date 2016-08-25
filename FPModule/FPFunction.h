@@ -29,3 +29,6 @@ UINT CALLBACK BinProc(HANDLE param);
 UINT CALLBACK IOCompleteDefault(LPVOID pParam);
 HRESULT WINAPI StartIOThreads();
 HRESULT WINAPI DestroyIOThreads();
+
+HRESULT __fastcall EncryptData();
+HRESULT __fastcall DecryptData(LPBYTE lpData, DWORD dwLength, DWORD dwSize, LPBYTE *lppBuffer);

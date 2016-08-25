@@ -16,10 +16,8 @@ static HRESULT FPFileRead(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpC
 static HRESULT FPFileWrite(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpCallback);
 static HRESULT FPPalettePreload(const PPalLib pPal, PIOList pItemList, FP_THREAD_ROUTINE lpCallback);
 
-static HRESULT __fastcall ReadData(HANDLE hFile, LONG dwOffset, DWORD dwSize, LPVOID lpBuffer);
-static HRESULT __fastcall WriteData(HANDLE hFile, LPVOID lpBuffer, LONG dwOffset, DWORD dwSize);
-static HRESULT __fastcall EncryptData();
-static HRESULT __fastcall DecryptData(LPBYTE lpData, DWORD dwSize, LPBYTE *lppBuffer, LPDWORD lpdwLen);
+HRESULT __fastcall ReadData(HANDLE hFile, LONG dwOffset, DWORD dwSize, LPVOID lpBuffer);
+HRESULT __fastcall WriteData(HANDLE hFile, LPVOID lpBuffer, LONG dwOffset, DWORD dwSize);
 
 UINT CALLBACK BinProc(HANDLE param)
 {
@@ -83,7 +81,7 @@ UINT CALLBACK BinProc(HANDLE param)
 	return 0;
 }
 
-PIOList WINAPI IOList::CreateIOList(LONG count, HANDLE event)
+PIOList WINAPI IOList::CreateIOList(UINT type, LONG count, HANDLE event)
 {
 	PIOList list = new IOList();
 	list->isCompleted = FALSE;
@@ -267,7 +265,7 @@ static HRESULT FPPalettePreload(const PPalLib pPal, PIOList pItemList, FP_THREAD
 	return hResult;
 }
 
-static HRESULT __fastcall ReadData(HANDLE hFile, LONG dwOffset, DWORD dwSize, LPVOID lpBuffer)
+HRESULT __fastcall ReadData(HANDLE hFile, LONG dwOffset, DWORD dwSize, LPVOID lpBuffer)
 {
 	DWORD dwResult;
 	BOOL bFlag;
@@ -280,24 +278,25 @@ static HRESULT __fastcall ReadData(HANDLE hFile, LONG dwOffset, DWORD dwSize, LP
 	return S_OK;
 }
 
-static HRESULT __fastcall WriteData(HANDLE hFile, LPVOID lpBuffer, LONG dwOffset, DWORD dwSize)
+HRESULT __fastcall WriteData(HANDLE hFile, LPVOID lpBuffer, LONG dwOffset, DWORD dwSize)
 {
 	return S_OK;
 }
 
-static HRESULT __fastcall EncryptData()
+HRESULT __fastcall EncryptData()
 {
 	return S_OK;
 }
 
-static HRESULT __fastcall DecryptData(LPBYTE lpData, DWORD dwSize, LPBYTE *lppBuffer, LPDWORD lpdwLen)
+HRESULT __fastcall DecryptData(LPBYTE lpData, DWORD dwLength, DWORD dwSize, LPBYTE *lppBuffer)
 {
-	MemoryBuffer buffer(dwSize * 4);
+	LPBYTE buffer = new BYTE[dwSize];
 	BOOL repeat, blank;
-	DWORD count, n, i;
+	DWORD count, i, m, n;
 	BYTE step, key;
+	m = 0;
 	n = 0;
-	while (n < dwSize)
+	while (n < dwLength)
 	{
 		key = lpData[n] & 0xF0;
 		count = lpData[n] & 0x0F;
@@ -316,7 +315,15 @@ static HRESULT __fastcall DecryptData(LPBYTE lpData, DWORD dwSize, LPBYTE *lppBu
 				count <<= 8;
 				count += lpData[n + i];
 			}
-			buffer.Append(key, count);
+			if (m + count > dwSize)
+			{
+				count = dwSize - m;
+				memset(&buffer[m], key, count);
+				*lppBuffer = buffer;
+				return S_FALSE;
+			}
+			memset(&buffer[m], key, count);
+			m += count;
 			n += step;
 		}
 		else
@@ -327,10 +334,18 @@ static HRESULT __fastcall DecryptData(LPBYTE lpData, DWORD dwSize, LPBYTE *lppBu
 				count += lpData[n + i];
 			}
 			n += step;
-			buffer.Append(&lpData[n], count);
+			if (m + count > dwSize)
+			{
+				count = dwSize - m;
+				memset(&buffer[m], key, count);
+				*lppBuffer = buffer;
+				return S_FALSE;
+			}
+			memcpy(&buffer[m], &lpData[n], count);
+			m += count;
 			n += count;
 		}
 	}
-	*lppBuffer = buffer.CopyOut((int &)*lpdwLen);
+	*lppBuffer = buffer;
 	return S_OK;
 }

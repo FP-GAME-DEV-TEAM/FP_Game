@@ -107,6 +107,16 @@ UINT CALLBACK GameGraphics::GraphicsIOComplete(LPVOID pParam)
 		return E_INVALIDARG;
 	}
 	PIOList pItemList = (PIOList)pParam;
+	if (pItemList->ioType == FPMSG_IO_READ_IMAGEDATA)
+	{
+		// Decompress ?
+		PIOItem pItem;
+		for (LONG i = 0; i < pItemList->count; i++)
+		{
+			pItem = &pItemList->pList[i];
+			DecryptData((LPBYTE)pItem->pData, pItem->size, 0, NULL);
+		}
+	}
 	return IOCompleteDefault(pItemList->hEvent);
 }
 
@@ -134,20 +144,51 @@ HANDLE GameGraphics::GetFileHandle(const UINT type) const
 	return handle;
 }
 
-HRESULT GameGraphics::GetImageById(LONG id, LPVOID pData)
+HRESULT GameGraphics::GetImage(LONG id, const FPImage **pData)
 {
-	
+	if (id < 0 || id > mGraphicList.size() || NULL == pData)
+	{
+		return E_FAIL;
+	}
+	ImageMap::const_iterator it = mGraphicCache.find(id);
+	if (it != mGraphicCache.end())
+	{
+		*pData = it->second;
+		return S_OK;
+	}
+	mGraphicCache[id] = NULL;
+	mImageReqQueue.push_back(id);
+	*pData = NULL;
+	return S_FALSE;
+}
+
+HRESULT GameGraphics::GetAction(LONG id, const FPAction **pData)
+{
+	if (id < 0 || id > mAnimeList.size() || NULL == pData)
+	{
+		return E_FAIL;
+	}
+	ActionMap::const_iterator it = mAnimeCache.find(id);
+	if (it != mAnimeCache.end())
+	{
+		*pData = it->second;
+		return S_OK;
+	}
+	// ?
 	return NULL;
 }
 
-HRESULT GameGraphics::GetAnimeById(LONG id, LPVOID pData)
+HRESULT GameGraphics::GetPalette(LONG id, const PALETTEENTRY **pData)
 {
-	return NULL;
-}
-
-HRESULT GameGraphics::SwitchPalette(LONG id)
-{
-	DWORD i, n=0;
+	DWORD i, n = 0;
+	if (mPaletteIndex == id)
+	{
+		if (NULL != pData)
+		{
+			*pData = mPalette;
+		}
+		return S_FALSE;
+	}
 	for (i = 0; i < FP_STORE_PAL_FRONT; i++)
 	{
 		mPalette[n++] = mPaletteDefault[i];
@@ -159,6 +200,11 @@ HRESULT GameGraphics::SwitchPalette(LONG id)
 	for (i = 0; i < FP_STORE_PAL_BACK; i++)
 	{
 		mPalette[n++] = mPaletteDefault[FP_STORE_PAL_FRONT + i];
+	}
+	mPaletteIndex = id;
+	if (NULL != pData)
+	{
+		*pData = mPalette;
 	}
 	PostMessage(hMainWnd, FPMSG_WINDOW_DEBUG_MSG, (WPARAM)id, (LPARAM)&mPalette[16]);
 	FP_DEBUG_MSG(_T("Palette switched to No.%d.\n"), id);
@@ -211,7 +257,7 @@ HRESULT GameGraphics::InitPalette(const PPalLib pPal)
 
 	//可变调色板的载入
 	HANDLE hDoneEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-	PIOList list = IOList::CreateIOList(FP_FILE_COUNT_PAL, hDoneEvent);
+	PIOList list = IOList::CreateIOList(FPMSG_IO_READ_PALETTE, FP_FILE_COUNT_PAL, hDoneEvent);
 	for (n = 0; n < list->count; n++)
 	{
 		list->SetIOListItem(n, 0, 0, FP_FILE_SIZE_PAL, mPaletteOptional[n]);
@@ -229,6 +275,7 @@ HRESULT GameGraphics::InitPalette(const PPalLib pPal)
 	}
 	delete list;
 	CloseHandle(hDoneEvent);
+	mPaletteIndex = -1;
 	return hResult;
 }
 
@@ -246,7 +293,7 @@ HRESULT GameGraphics::LoadGraphicInfo()
 	dwCount = dwSize / sizeof(GraphicInfo);
 	mGraphicList.resize(dwCount);
 	HANDLE hDoneEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-	PIOList list = IOList::CreateIOList(1, hDoneEvent);
+	PIOList list = IOList::CreateIOList(FPMSG_IO_READ_IMAGEINFO, 1, hDoneEvent);
 	list->SetIOListItem(0, 0, 0, dwSize, &mGraphicList[0]);
 	PostThreadMessage(mainIOThread.uThreadId, FPMSG_IO_READ_IMAGEINFO, (WPARAM)list, (LPARAM)GraphicsIOComplete);
 	if (WaitForSingleObject(hDoneEvent, FP_THREAD_TIMEOUT) == WAIT_OBJECT_0)
@@ -278,7 +325,7 @@ HRESULT GameGraphics::LoadAnimeInfo()
 	dwCount = dwSize / sizeof(AnimeInfo);
 	mAnimeList.resize(dwCount);
 	HANDLE hDoneEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-	PIOList list = IOList::CreateIOList(1, hDoneEvent);
+	PIOList list = IOList::CreateIOList(FPMSG_IO_READ_ANIMEINFO, 1, hDoneEvent);
 	list->SetIOListItem(0, 0, 0, dwSize, &mAnimeList[0]);
 	PostThreadMessage(mainIOThread.uThreadId, FPMSG_IO_READ_ANIMEINFO, (WPARAM)list, (LPARAM)GraphicsIOComplete);
 	if (WaitForSingleObject(hDoneEvent, FP_THREAD_TIMEOUT) == WAIT_OBJECT_0)

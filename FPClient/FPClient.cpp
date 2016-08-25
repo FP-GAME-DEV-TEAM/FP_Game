@@ -73,15 +73,14 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	wcex.hIconSm = NULL;
 	if (!RegisterClassEx(&wcex))
 	{
-		return 0;
+		return -1;
 	}
 
 	// Perform application initialization:
 	fWindowed = TRUE;
 	if (!InitWindow(nCmdShow, &hAccel))
 	{
-		MessageBox(hMainWnd, _T("Fail to initialize the window instance!"), _T("Error"), MB_ICONERROR | MB_OK);
-		return -1;
+		return -2;
 	}
 
 	// Start game logic
@@ -89,7 +88,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	if (FAILED(GameInit()))
 	{
 		MessageBox(hMainWnd, _T("Game starting failed!"), _T("Error"), MB_ICONERROR | MB_OK);
-		return -2;
+		return -3;
 	}
 
 	// Main message loop:
@@ -97,7 +96,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	if (!hMainTimer)
 	{
 		FP_DEBUG_MSG(_T("CreateWaitableTimer failed (%d)\n"), GetLastError());
-		return -3;
+		return -4;
 	}
 	LARGE_INTEGER liDueTime;
 	liDueTime.QuadPart = -1i64;
@@ -150,6 +149,7 @@ BOOL InitWindow(int nCmdShow, HACCEL *phAccel)
 	HACCEL hAccel = LoadAccelerators(hInst, MAKEINTRESOURCE(IDR_MAIN_ACCEL));
 	*phAccel = hAccel; // Store accelerate keys
 	hMainWnd = CreateWindowEx(NULL, szWindowClass, szTitle, WS_POPUP, 0, 0, 0, 0, NULL, NULL, hInst, NULL);
+	//hMainWnd = CreateWindow(szWindowClass, szTitle, WS_POPUP, 0, 0, 0, 0, NULL, NULL, hInst, NULL);
 	if (!hMainWnd)
 	{
 		return FALSE;

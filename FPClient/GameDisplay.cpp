@@ -30,7 +30,7 @@ HRESULT InitGameDisplay(BOOL flag)
 	// Initialize the game display on window mode or fullscreen
 	if (fWindowed == STAGE_MODE_WINDOWED)
 	{
-		dwRet = CreateWindowedDisplay(hMainWnd, STAGE_DEFAULT_WIDTH, STAGE_DEFAULT_HEIGHT);
+		dwRet = CreateWindowedDisplay(hMainWnd, STAGE_WINDOW_WIDTH, STAGE_WINDOW_HEIGHT);
 		if (S_OK == dwRet)
 		{
 			fWindowed = TRUE;
@@ -104,7 +104,7 @@ static HRESULT CreateWindowedDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight)
 		return E_FAIL;
 	}
 
-	// Create clipper for the  primary surface
+	// Create clipper for the primary surface
 	LPDIRECTDRAWCLIPPER lpClipper;
 	if (FAILED(lpdd->CreateClipper(0, &lpClipper, NULL)))
 	{
@@ -121,6 +121,7 @@ static HRESULT CreateWindowedDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight)
 		return E_FAIL;
 	}
 	lpClipper->Release();
+	lpClipper = NULL;
 
 	// Update window flag
 	SetClassLong(hWnd, GCL_HICONSM, (LONG)LoadIcon(hInst, MAKEINTRESOURCE(IDI_ICONSM)));

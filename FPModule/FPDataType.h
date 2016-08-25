@@ -177,12 +177,13 @@ typedef struct tagIOItem
 
 typedef struct tagIOList
 {
+	UINT ioType;
 	BOOL isCompleted;
 	HANDLE hEvent;
 	LONG count;
 	PIOItem pList;
 
-	static tagIOList * WINAPI CreateIOList(LONG count, HANDLE param);
+	static tagIOList * WINAPI CreateIOList(UINT type, LONG count, HANDLE event);
 	PIOItem SetIOListItem(LONG index, DWORD maxSize, DWORD offset, DWORD sizeEnd, LPVOID lpData);
 	virtual ~tagIOList();
 
@@ -214,6 +215,12 @@ typedef struct tagThreadInfo
 // Interface Implements Data Types
 //
 
+typedef std::map<LONG, PFPImage> ImageMap;
+typedef std::map<LONG, PFPAction> ActionMap;
+typedef std::vector<GraphicInfo> ImageList;
+typedef std::vector<AnimeInfo> ActionList;
+typedef std::deque<LONG> BinReqQueue;
+
 //游戏图像类
 class GameGraphics : public IGameGraphics
 {
@@ -227,12 +234,15 @@ private:
 	PALETTEENTRY mPalette[FP_STORE_PAL_COUNT]; //当前调色板
 	PALETTEENTRY mPaletteDefault[FP_STORE_PAL_DEFAULT]; //固定调色板数组表
 	PALETTEENTRY mPaletteOptional[FP_FILE_COUNT_PAL][FP_STORE_PAL_OPTIONAL]; //可变调色板数组表
+	LONG mPaletteIndex; //当前全局调色板索引
 
 protected:
-	std::map<LONG, FPImage> mGraphicCache; //图像数据缓存
-	std::map<LONG, LPBYTE> mAnimeCache; //动画数据缓存
-	std::vector<GraphicInfo> mGraphicList; //图像索引数据
-	std::vector<AnimeInfo> mAnimeList; //动画索引数据
+	ImageMap mGraphicCache; //图像数据缓存
+	ActionMap mAnimeCache; //动画数据缓存
+	ImageList mGraphicList; //图像索引数据
+	ActionList mAnimeList; //动画索引数据
+	BinReqQueue mImageReqQueue; //图像IO请求队列
+	BinReqQueue mActionReqQueue; //动画IO请求队列
 
 	GameGraphics(); //构造函数
 	virtual ~GameGraphics(void); //析构函数
@@ -246,10 +256,10 @@ public:
 	HRESULT LoadGraphicInfo(); //加载图像索引文件
 	HRESULT LoadAnimeInfo(); //加载动画索引文件
 
-	HANDLE GetFileHandle(const UINT type) const;
-	HRESULT GetImageById(LONG id, LPVOID pData); //通过ID得到图片
-	HRESULT GetAnimeById(LONG id, LPVOID pData); //通过ID得到动画
-	HRESULT SwitchPalette(LONG id); //更换调色板
+	HANDLE GetFileHandle(const UINT type) const; //得到相关文件句柄
+	HRESULT GetImage(LONG id, const FPImage **pData); //通过ID得到图片
+	HRESULT GetAction(LONG id, const FPAction **pData); //通过ID得到动画
+	HRESULT GetPalette(LONG id, const PALETTEENTRY **pData); //更换调色板
 };
 
 
