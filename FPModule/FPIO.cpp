@@ -12,9 +12,9 @@
 #include "FPDump.h"
 #include "FPUtility.h"
 
-static HRESULT FPFileRead(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpCallback);
-static HRESULT FPFileWrite(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpCallback);
-static HRESULT FPPalettePreload(const PPalLib pPal, PIOList pItemList, FP_THREAD_ROUTINE lpCallback);
+static HRESULT FPFileRead(HANDLE hFile, PIOList pList, FP_THREAD_ROUTINE lpCallback);
+static HRESULT FPFileWrite(HANDLE hFile, PIOList pList, FP_THREAD_ROUTINE lpCallback);
+static HRESULT FPPalettePreload(const PPalLib pPal, PIOList pList, FP_THREAD_ROUTINE lpCallback);
 
 HRESULT __fastcall ReadData(HANDLE hFile, LONG dwOffset, DWORD dwSize, LPVOID lpBuffer);
 HRESULT __fastcall WriteData(HANDLE hFile, LPVOID lpBuffer, LONG dwOffset, DWORD dwSize);
@@ -81,7 +81,7 @@ UINT CALLBACK BinProc(HANDLE param)
 	return 0;
 }
 
-PIOList WINAPI IOList::CreateIOList(UINT type, LONG count, HANDLE event)
+PIOList WINAPI IOList::CreateIOList(LONG count, HANDLE event)
 {
 	PIOList list = new IOList();
 	list->isCompleted = FALSE;
@@ -89,7 +89,7 @@ PIOList WINAPI IOList::CreateIOList(UINT type, LONG count, HANDLE event)
 	list->count = count;
 	PIOItem items = new IOItem[count];
 	ZeroMemory(items, count * sizeof(IOItem));
-	list->pList = items;
+	list->pItemList = items;
 	return list;
 }
 
@@ -99,7 +99,7 @@ PIOItem IOList::SetIOListItem(LONG index, DWORD maxSize, DWORD offset, DWORD siz
 	{
 		return NULL;
 	}
-	PIOItem item = &(this->pList)[index];
+	PIOItem item = &(this->pItemList)[index];
 	if (maxSize > 0)
 	{
 		item->maxSize = maxSize;
@@ -123,7 +123,7 @@ PIOItem IOList::SetIOListItem(LONG index, DWORD maxSize, DWORD offset, DWORD siz
 
 IOList::~tagIOList()
 {
-	PIOItem item = this->pList;
+	PIOItem item = this->pItemList;
 	delete[] item;
 }
 
@@ -133,30 +133,28 @@ UINT CALLBACK IOCompleteDefault(LPVOID pParam)
 	{
 		return E_INVALIDARG;
 	}
-	if (!SetEvent(pParam))
-	{
-		return E_HANDLE;
-	}
+	PIOList pList = (PIOList)pParam;
+	delete pList;
 	return S_OK;
 }
 
-static HRESULT FPFileRead(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpCallback)
+static HRESULT FPFileRead(HANDLE hFile, PIOList pList, FP_THREAD_ROUTINE lpCallback)
 {
 	HRESULT hResult;
 	PIOItem pItem = NULL;
 	PTCHAR lpTempStr = NULL;
 	int length = 0;
-	if (NULL == hFile || INVALID_HANDLE_VALUE == hFile || NULL == pItemList)
+	if (NULL == hFile || INVALID_HANDLE_VALUE == hFile || NULL == pList)
 	{
 		return E_INVALIDARG;
 	}
-	if (!(pItemList->count > 0) || NULL == pItemList->pList)
+	if (!(pList->count > 0) || NULL == pList->pItemList)
 	{
 		return E_POINTER;
 	}
-	for (LONG i = 0; i < pItemList->count; i++)
+	for (LONG i = 0; i < pList->count; i++)
 	{
-		pItem = &pItemList->pList[i];
+		pItem = &pList->pItemList[i];
 		if (NULL == pItem)
 		{
 			return E_POINTER;
@@ -194,46 +192,46 @@ static HRESULT FPFileRead(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpC
 	}
 	if (SUCCEEDED(hResult))
 	{
-		pItemList->isCompleted = TRUE;
+		pList->isCompleted = TRUE;
 		if (NULL != lpCallback)
 		{
-			lpCallback(pItemList);
+			lpCallback(pList);
 		}
 	}
 	return hResult;
 }
 
-static HRESULT FPFileWrite(HANDLE hFile, PIOList pItemList, FP_THREAD_ROUTINE lpCallback)
+static HRESULT FPFileWrite(HANDLE hFile, PIOList pList, FP_THREAD_ROUTINE lpCallback)
 {
 	return S_OK;
 }
 
-static HRESULT FPPalettePreload(const PPalLib pPal, PIOList pItemList, FP_THREAD_ROUTINE lpCallback)
+static HRESULT FPPalettePreload(const PPalLib pPal, PIOList pList, FP_THREAD_ROUTINE lpCallback)
 {
 	HRESULT hResult;
 	HANDLE hFile;
 	tstring strPath;
 	PIOItem pItem;
 	LPBYTE buffer;
-	if (NULL == pPal || NULL == pItemList)
+	if (NULL == pPal || NULL == pList)
 	{
 		return E_INVALIDARG;
 	}
-	if (!(pItemList->count > 0) || NULL == pItemList->pList)
+	if (!(pList->count > 0) || NULL == pList->pItemList)
 	{
 		return E_POINTER;
 	}
-	if (pItemList->count != pPal->sum)
+	if (pList->count != pPal->sum)
 	{
 		return E_POINTER;
 	}
 	buffer = new BYTE[FP_FILE_SIZE_PAL];
-	for (LONG i = 0; i < pItemList->count; i++)
+	for (LONG i = 0; i < pList->count; i++)
 	{
 		strPath = pPal->palPath;
 		strPath += _T("\\");
 		strPath += (pPal->fileList[i]);
-		pItem = &pItemList->pList[i];
+		pItem = &pList->pItemList[i];
 		hFile = CreateFile(strPath.c_str(), GENERIC_READ, FILE_SHARE_READ,
 			NULL, OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, NULL);
 		if (INVALID_HANDLE_VALUE == hFile)
@@ -256,10 +254,10 @@ static HRESULT FPPalettePreload(const PPalLib pPal, PIOList pItemList, FP_THREAD
 	delete[] buffer;
 	if (SUCCEEDED(hResult))
 	{
-		pItemList->isCompleted = TRUE;
+		pList->isCompleted = TRUE;
 		if (NULL != lpCallback)
 		{
-			lpCallback(pItemList);
+			lpCallback(pList);
 		}
 	}
 	return hResult;

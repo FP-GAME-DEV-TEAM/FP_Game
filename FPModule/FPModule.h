@@ -222,10 +222,10 @@ typedef struct tagFPAction
 class FP_MODULE_API IGameGraphics
 {
 public:
-	virtual HANDLE GetFileHandle(const UINT type) const = 0; //得到文件操作句柄
-	virtual HRESULT GetImage(LONG id, const FPImage **pData) = 0; //通过ID得到图片
-	virtual HRESULT GetAction(LONG id, const FPAction **pData) = 0; //通过ID得到动画
-	virtual HRESULT GetPalette(LONG id, const PALETTEENTRY **pData) = 0; //更换调色板
+	virtual HRESULT ChangePalette(const LONG id, const PALETTEENTRY **pData) = 0; //更换调色板
+	virtual HRESULT GetImage(const LONG id, const FPImage **pData) = 0; //通过ID得到图片
+	virtual HRESULT GetAction(const LONG id, const FPAction **pData) = 0; //通过ID得到动画
+	virtual HRESULT LoopIORequest(const DWORD dwTick) = 0; //轮询所有Graphics类的IO请求
 };
 
 
@@ -238,7 +238,6 @@ class FP_MODULE_API IGameAudio
 public:
 	virtual LPCVOID GetWavDataById(LPCTSTR name) const = 0; //通过名称得到.wav文件数据
 	virtual LPCVOID GetMp3DataById(LPCTSTR name) const = 0; //通过名称得到.mp3文件数据
-	
 };
 
 

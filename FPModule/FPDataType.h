@@ -177,13 +177,12 @@ typedef struct tagIOItem
 
 typedef struct tagIOList
 {
-	UINT ioType;
 	BOOL isCompleted;
 	HANDLE hEvent;
 	LONG count;
-	PIOItem pList;
+	PIOItem pItemList;
 
-	static tagIOList * WINAPI CreateIOList(UINT type, LONG count, HANDLE event);
+	static tagIOList * WINAPI CreateIOList(LONG count, HANDLE event);
 	PIOItem SetIOListItem(LONG index, DWORD maxSize, DWORD offset, DWORD sizeEnd, LPVOID lpData);
 	virtual ~tagIOList();
 
@@ -236,15 +235,18 @@ private:
 	PALETTEENTRY mPaletteOptional[FP_FILE_COUNT_PAL][FP_STORE_PAL_OPTIONAL]; //可变调色板数组表
 	LONG mPaletteIndex; //当前全局调色板索引
 
+	GameGraphics(){}; //构造函数
+	GameGraphics(const GameGraphics &other){}; //拷贝构造函数
+
 protected:
-	ImageMap mGraphicCache; //图像数据缓存
-	ActionMap mAnimeCache; //动画数据缓存
 	ImageList mGraphicList; //图像索引数据
 	ActionList mAnimeList; //动画索引数据
+	ImageMap mGraphicCache; //图像数据缓存
+	ActionMap mAnimeCache; //动画数据缓存
+
 	BinReqQueue mImageReqQueue; //图像IO请求队列
 	BinReqQueue mActionReqQueue; //动画IO请求队列
 
-	GameGraphics(); //构造函数
 	virtual ~GameGraphics(void); //析构函数
 	static UINT CALLBACK GraphicsIOComplete(LPVOID pParam); //图像IO完成接口
 
@@ -252,14 +254,19 @@ public:
 	static HRESULT WINAPI Create(const PBinLib pBin);
 	static VOID WINAPI Destroy();
 
-	HRESULT InitPalette(const PPalLib pPal); //加载调色板
-	HRESULT LoadGraphicInfo(); //加载图像索引文件
-	HRESULT LoadAnimeInfo(); //加载动画索引文件
-
 	HANDLE GetFileHandle(const UINT type) const; //得到相关文件句柄
-	HRESULT GetImage(LONG id, const FPImage **pData); //通过ID得到图片
-	HRESULT GetAction(LONG id, const FPAction **pData); //通过ID得到动画
-	HRESULT GetPalette(LONG id, const PALETTEENTRY **pData); //更换调色板
+	HRESULT InitPalette(const PPalLib pPal); //加载调色板
+	HRESULT InitGraphicInfo(); //加载图像索引文件
+	HRESULT InitAnimeInfo(); //加载动画索引文件
+	HRESULT GetGraphicInfo(const LONG id, const GraphicInfo *pInfo); //加载图像索引文件
+	HRESULT GetAnimeInfo(const LONG id, const AnimeInfo *pInfo); //加载图像索引文件
+
+	// DLL interface functions
+
+	HRESULT ChangePalette(const LONG id, const PALETTEENTRY **pData); //更换调色板
+	HRESULT GetImage(const LONG id, const FPImage **pData); //通过ID得到图片
+	HRESULT GetAction(const LONG id, const FPAction **pData); //通过ID得到动画
+	HRESULT LoopIORequest(const DWORD dwTick); //轮询所有Graphics类的IO请求
 };
 
 

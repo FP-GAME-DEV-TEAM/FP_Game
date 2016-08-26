@@ -22,9 +22,9 @@ LRESULT CALLBACK MainProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			// Test switch palette
 			const PALETTEENTRY *pPalet;
 			if (fWindowed)
-				gameGraphics->GetPalette(1, &pPalet); //≤‚ ‘IO
+				gameGraphics->ChangePalette(1, &pPalet); //≤‚ ‘IO
 			else
-				gameGraphics->GetPalette(2, &pPalet); //≤‚ ‘IO
+				gameGraphics->ChangePalette(2, &pPalet); //≤‚ ‘IO
 			fWindowed = !fWindowed;
 			if (FAILED(InitGameDisplay(fWindowed)))
 			{
