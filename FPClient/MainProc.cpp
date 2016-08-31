@@ -4,8 +4,9 @@
 #include "stdafx.h"
 #include "FPClient.h"
 
-// Just for testing
-void TestPrintPalette(LONG id, PALETTEENTRY *pArray);
+HRESULT SwitchDisplayMode(HWND hWnd);
+// Just for test switch palette
+HRESULT TestPrintPalette(LONG id, PALETTEENTRY *pArray);
 
 LRESULT CALLBACK MainProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -19,30 +20,15 @@ LRESULT CALLBACK MainProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 		case IDM_TOGGLEDISPLAYMODE:
 			// Toggle the fullscreen/window mode
-			// Test switch palette
-			const PALETTEENTRY *pPalet;
-			if (fWindowed)
-				gameGraphics->ChangePalette(1, &pPalet); //≤‚ ‘IO
-			else
-				gameGraphics->ChangePalette(2, &pPalet); //≤‚ ‘IO
-			fWindowed = !fWindowed;
-			if (FAILED(InitGameDisplay(fWindowed)))
-			{
-				FP_DEBUG_MSG(_T("Failed to switch display mode!\n"));
-				MessageBox(hWnd, _T("Failed to switch display mode!"), _T("Error"), MB_ICONERROR | MB_OK);
-				// Back to original mode
-				fWindowed = !fWindowed;
-				if (FAILED(InitGameDisplay(fWindowed)))
-				{
-					FP_DEBUG_MSG(_T("Failed to switch display mode again!\n"));
-					PostMessage(hWnd, WM_CLOSE, 0, 0);
-					FP_DEBUG_MSG(_T("The game process is forced to quit!\n"));
-				}
-				MessageBox(hWnd, _T("Switched to former display mode."), _T("Error"), MB_ICONWARNING | MB_OK);
-			}
-			return 0L;
+			SwitchDisplayMode(hWnd);
 		}
-		break; // Continue with default processing
+		break;
+
+	case FPMSG_IO_READ_GRAPHICDATA:
+	case FPMSG_IO_READ_ANIMEDATA:
+		// Being called when IO data is back
+		gameGraphics->IODataBack(message, wParam, (LPVOID)lParam);
+		break;
 
 	case FPMSG_WINDOW_DEBUG_MSG:
 		TestPrintPalette((LONG)wParam, (PALETTEENTRY *)lParam);
@@ -80,8 +66,35 @@ LRESULT CALLBACK MainProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-void TestPrintPalette(LONG id, PALETTEENTRY *pArray)
+HRESULT SwitchDisplayMode(HWND hWnd)
 {
+	// Test switch palette
+	const PALETTEENTRY *pPalet;
+	if (fWindowed)
+		gameGraphics->ChangePalette(1, &pPalet); //≤‚ ‘IO
+	else
+		gameGraphics->ChangePalette(2, &pPalet); //≤‚ ‘IO
+	fWindowed = !fWindowed;
+	if (FAILED(InitGameDisplay(fWindowed)))
+	{
+		FP_DEBUG_MSG(_T("Failed to switch display mode!\n"));
+		MessageBox(hWnd, _T("Failed to switch display mode!"), _T("Error"), MB_ICONERROR | MB_OK);
+		// Back to original mode
+		fWindowed = !fWindowed;
+		if (FAILED(InitGameDisplay(fWindowed)))
+		{
+			FP_DEBUG_MSG(_T("Failed to switch display mode again!\n"));
+			PostMessage(hWnd, WM_CLOSE, 0, 0);
+			FP_DEBUG_MSG(_T("The game process is forced to quit!\n"));
+		}
+		MessageBox(hWnd, _T("Switched to former display mode."), _T("Error"), MB_ICONWARNING | MB_OK);
+	}
+	return S_OK;
+}
+
+HRESULT TestPrintPalette(LONG id, PALETTEENTRY *pArray)
+{
+	// Test switch palette
 	FP_DEBUG_MSG(_T("Palette %d Data:"), id);
 	for (int i = 0; i < FP_STORE_PAL_OPTIONAL; i++)
 	{
@@ -92,4 +105,5 @@ void TestPrintPalette(LONG id, PALETTEENTRY *pArray)
 		FP_DEBUG_MSG(_T(" 0x%08x "), pArray[i]);
 	}
 	FP_DEBUG_MSG(_T("\n"));
+	return S_OK;
 }

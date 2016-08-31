@@ -103,14 +103,60 @@ UINT CALLBACK GameGraphics::GraphicsIOComplete(LPVOID pParam)
 		return E_INVALIDARG;
 	}
 	PIOList pList = (PIOList)pParam;
-	if (NULL != pList->hEvent)
+	PIOItem pItem = NULL;
+	if (pList->isCompleted && pList->uIOType == FPMSG_IO_READ_GRAPHICDATA)
 	{
-		if (!SetEvent(pList->hEvent))
+		PGraphicData pGD = NULL;
+		PFPImage pImg = NULL;
+		DWORD dwSize = 0;
+		KeyValue *kvList = new KeyValue[pList->nCount];
+		for (LONG i = 0; i < pList->nCount; i++)
 		{
-			return E_HANDLE;
+			pItem = &pList->pItemList[i];
+			pGD = (PGraphicData)pItem->pData;
+			dwSize = pGD->width * pGD->height;
+			pImg = (PFPImage) new BYTE[(sizeof(FPImage)-sizeof(DWORD)) + dwSize];
+			pImg->width = pGD->width;
+			pImg->height = pGD->height;
+			if (pGD->flag % 2 == 0)
+			{
+				CopyMemory(pImg->data, (pGD + 1), dwSize);
+			}
+			else
+			{
+				DecryptData((LPBYTE)(pGD + 1), pGD->size - sizeof(pGD), dwSize, (LPBYTE)(pImg->data));
+			}
+			kvList[i].first = pItem->id;
+			kvList[i].second = pImg;
 		}
+		PostMessage(hMainWnd, FPMSG_IO_READ_GRAPHICDATA, pList->nCount, (LPARAM)kvList);
 	}
 	return IOCompleteDefault(pParam);
+}
+
+HRESULT GameGraphics::IODataBack(UINT type, LONG id, LPVOID data)
+{
+	if (FPMSG_IO_READ_GRAPHICDATA == type)
+	{
+		ImageMap::iterator it = mGraphicCache.find(id);
+		if (it == mGraphicCache.end())
+		{
+			return E_FAIL;
+		}
+		it->second = (PFPImage)data;
+		return S_OK;
+	}
+	if (FPMSG_IO_READ_ANIMEDATA == type)
+	{
+		ActionMap::iterator it = mAnimeCache.find(id);
+		if (it == mAnimeCache.end())
+		{
+			return E_FAIL;
+		}
+		it->second = (PFPAction)data;
+		return S_OK;
+	}
+	return E_FAIL;
 }
 
 HANDLE GameGraphics::GetFileHandle(const UINT type) const
@@ -183,12 +229,12 @@ HRESULT GameGraphics::InitPalette(const PPalLib pPal)
 
 	//可变调色板的载入
 	HANDLE hDoneEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-	PIOList list = IOList::CreateIOList(FP_FILE_COUNT_PAL, hDoneEvent);
-	for (n = 0; n < list->count; n++)
+	PIOList pList = IOList::CreateIOList(FPMSG_IO_READ_PALETTE, hDoneEvent, FP_FILE_COUNT_PAL);
+	for (n = 0; n < pList->nCount; n++)
 	{
-		list->SetIOListItem(n, 0, 0, FP_FILE_SIZE_PAL, mPaletteOptional[n]);
+		pList->SetIOListItem(n, n, 0, 0, FP_FILE_SIZE_PAL, mPaletteOptional[n]);
 	}
-	PostThreadMessage(mainIOThread.uThreadId, FPMSG_IO_READ_PALETTE, (WPARAM)list, (LPARAM)GraphicsIOComplete);
+	PostThreadMessage(mainIOThread.uThreadId, FPMSG_IO_READ_PALETTE, (WPARAM)pList, (LPARAM)GraphicsIOComplete);
 	if (WaitForSingleObject(hDoneEvent, FP_THREAD_TIMEOUT) == WAIT_OBJECT_0)
 	{
 		FP_DEBUG_MSG(_T("Palette all loaded.\n"));
@@ -218,9 +264,9 @@ HRESULT GameGraphics::InitGraphicInfo()
 	dwCount = dwSize / sizeof(GraphicInfo);
 	mGraphicList.resize(dwCount);
 	HANDLE hDoneEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-	PIOList list = IOList::CreateIOList(1, hDoneEvent);
-	list->SetIOListItem(0, 0, 0, dwSize, &mGraphicList[0]);
-	PostThreadMessage(mainIOThread.uThreadId, FPMSG_IO_READ_IMAGEINFO, (WPARAM)list, (LPARAM)GraphicsIOComplete);
+	PIOList pList = IOList::CreateIOList(FPMSG_IO_READ_GRAPHICINFO, hDoneEvent, 1);
+	pList->SetIOListItem(0, 0, 0, 0, dwSize, &mGraphicList[0]);
+	PostThreadMessage(mainIOThread.uThreadId, FPMSG_IO_READ_GRAPHICINFO, (WPARAM)pList, (LPARAM)GraphicsIOComplete);
 	if (WaitForSingleObject(hDoneEvent, FP_THREAD_TIMEOUT) == WAIT_OBJECT_0)
 	{
 		FP_DEBUG_MSG(_T("Graphic info loaded.\n"));
@@ -229,6 +275,7 @@ HRESULT GameGraphics::InitGraphicInfo()
 	else
 	{
 		ErrorHandler(ERROR_RES_RequestTimeout, _T(__FUNCTION__));
+		FP_DEBUG_MSG(_T("Failed to load graphic info.\n"));
 		hResult = E_HANDLE;
 	}
 	CloseHandle(hDoneEvent);
@@ -249,9 +296,9 @@ HRESULT GameGraphics::InitAnimeInfo()
 	dwCount = dwSize / sizeof(AnimeInfo);
 	mAnimeList.resize(dwCount);
 	HANDLE hDoneEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-	PIOList list = IOList::CreateIOList(1, hDoneEvent);
-	list->SetIOListItem(0, 0, 0, dwSize, &mAnimeList[0]);
-	PostThreadMessage(mainIOThread.uThreadId, FPMSG_IO_READ_ANIMEINFO, (WPARAM)list, (LPARAM)GraphicsIOComplete);
+	PIOList pList = IOList::CreateIOList(FPMSG_IO_READ_ANIMEINFO, hDoneEvent, 1);
+	pList->SetIOListItem(0, 0, 0, 0, dwSize, &mAnimeList[0]);
+	PostThreadMessage(mainIOThread.uThreadId, FPMSG_IO_READ_ANIMEINFO, (WPARAM)pList, (LPARAM)GraphicsIOComplete);
 	if (WaitForSingleObject(hDoneEvent, FP_THREAD_TIMEOUT) == WAIT_OBJECT_0)
 	{
 		FP_DEBUG_MSG(_T("Anime info loaded.\n"));
@@ -260,6 +307,7 @@ HRESULT GameGraphics::InitAnimeInfo()
 	else
 	{
 		ErrorHandler(ERROR_RES_RequestTimeout, _T(__FUNCTION__));
+		FP_DEBUG_MSG(_T("Failed to load anime info.\n"));
 		hResult = E_HANDLE;
 	}
 	CloseHandle(hDoneEvent);
@@ -332,7 +380,7 @@ HRESULT GameGraphics::GetImage(const LONG id, const FPImage **pData)
 		return S_OK;
 	}
 	mGraphicCache[id] = NULL;
-	mImageReqQueue.push_back(id);
+	mImageReqQueue.insert(id);
 	*pData = NULL;
 	return S_FALSE;
 }
@@ -350,13 +398,55 @@ HRESULT GameGraphics::GetAction(const LONG id, const FPAction **pData)
 		return S_OK;
 	}
 	mAnimeCache[id] = NULL;
-	mActionReqQueue.push_back(id);
+	mActionReqQueue.insert(id);
 	*pData = NULL;
 	return NULL;
 }
 
 HRESULT GameGraphics::LoopIORequest(const DWORD dwTick)
 {
-	// TODO
+	HRESULT hResult;
+	LONG n, count;
+	BinReqSet::const_iterator it;
+	PIOList pList = NULL;
+	// Loop GraphicData IO Requests
+	n = 0;
+	count = mImageReqQueue.size();
+	pList = IOList::CreateIOList(FPMSG_IO_READ_GRAPHICDATA, NULL, count);
+	for (it = mImageReqQueue.cbegin(); it != mImageReqQueue.cend(); it++)
+	{
+		const GraphicInfo *pGraphic = NULL;
+		if (FAILED(GetGraphicInfo((*it), pGraphic)))
+		{
+			return E_FAIL;
+		}
+		if (NULL != pGraphic)
+		{
+			pList->SetIOListItem(n, (*it), 0, pGraphic->addr, pGraphic->size, new BYTE[pGraphic->size]);
+		}
+		n++;
+	}
+	PostThreadMessage(mainIOThread.uThreadId, FPMSG_IO_READ_GRAPHICDATA, (WPARAM)pList, (LPARAM)GraphicsIOComplete);
+	mImageReqQueue.clear();
+	// Loop AnimeData IO Requests
+	n = 0;
+	count = mActionReqQueue.size();
+	it = mActionReqQueue.cbegin();
+	pList = IOList::CreateIOList(FPMSG_IO_READ_ANIMEDATA, NULL, count);
+	for (it = mActionReqQueue.cbegin(); it != mActionReqQueue.cend(); it++)
+	{
+		const AnimeInfo *pAnime = NULL;
+		if (FAILED(GetAnimeInfo((*it), pAnime)))
+		{
+			return E_FAIL;
+		}
+		if (NULL != pAnime)
+		{
+			pList->SetIOListItem(n, (*it), 0, pAnime->addr, pAnime->size, new BYTE[pAnime->size]);
+		}
+		n++;
+	}
+	PostThreadMessage(mainIOThread.uThreadId, FPMSG_IO_READ_ANIMEDATA, (WPARAM)pList, (LPARAM)GraphicsIOComplete);
+	mActionReqQueue.clear();
 	return S_OK;
 }

@@ -11,6 +11,44 @@
 
 #include "FPModule.h"
 
+
+//相对路径和文件名宏定义
+#define FP_PATH_BIN _T("\\bin") //资源文件相对路径
+#define FP_PATH_PAL _T("\\pal") //调色板文件相对路径
+#define FP_PATH_SND _T("\\sound") //音效文件相对路径
+#define FP_PATH_BGM _T("\\bgm") //背景音乐文件相对路径
+
+#define FP_PATH_DAT _T("\\data") //数据文件相对路径
+#define FP_PATH_SET _T("\\setting") //设置文件相对路径
+#define FP_PATH_LOG _T("\\log") //日志文件相对路径
+#define FP_PATH_EML _T("\\email") //邮件文件相对路径
+
+#define FP_PATH_MAP _T("\\map") //地图文件相对路径
+#define FP_PATH_STC _T("\\static") //固定地图数据相对路径
+#define FP_PATH_RDM _T("\\random") //随机地图数据相对路径
+
+#define FP_FILE_GAME_CONFIG _T("Config.dat") //动画数据文件名
+#define FP_FILE_GRAPHIC_INFO _T("GraphicInfo_") //图像字典文件名
+#define FP_FILE_GRAPHIC_DATA _T("GraphicData_") //图像数据文件名
+#define FP_FILE_ANIME_INFO _T("AnimeInfo_") //动画字典文件名
+#define FP_FILE_ANIME_DATA _T("AnimeData_") //动画数据文件名
+
+//文件后缀宏定义
+#define FP_FILE_SUFFIX_BIN _T(".bin") //图像资源文件后缀
+#define FP_FILE_SUFFIX_DAT _T(".dat") //数据配置文件后缀
+#define FP_FILE_SUFFIX_PAL _T(".fgp") //调色板文件后缀
+#define FP_FILE_SUFFIX_LOG _T(".log") //日志文件后缀
+#define FP_FILE_SUFFIX_MAP _T(".map") //地图文件后缀
+#define FP_FILE_SUFFIX_MP3 _T(".mp3") //背景音乐文件后缀
+#define FP_FILE_SUFFIX_WAV _T(".wav") //音效文件后缀
+
+//文件对应的HANDLE掩码
+#define FP_HANDLE_GRAPHIC_DATA 0x0000 //图像数据句柄编号
+#define FP_HANDLE_GRAPHIC_INFO 0x0001 //图像字典句柄编号
+#define FP_HANDLE_ANIME_DATA 0x0002 //动画数据句柄编号
+#define FP_HANDLE_ANIME_INFO 0x0003 //动画字典句柄编号
+
+
 //=====================================
 // Graphics Data Types
 //
@@ -157,14 +195,17 @@ typedef struct tagGameRes
 //=====================================
 // IO Data Types
 // Sample: PostThreadMessage(ThreadId, IOType, IOReqList, CallbackFunc)
-// CallbackFunc: UINT (*func)(LPVOID)
+// CallbackFunc: UINT (CALLBACK *func)(LPVOID)
 // If maxSize>0, the inner union specify 'end' to indicate that the length of the data requested is unknown,
 // So we use this 'end' to be a terminator of the stream and 'size' will be the final data length,
 // Else the union specify 'size' to indicate that the length of the data requested is already specified.
+// When IO is complete, using PostMessage() to notify main window to do extra process.
+// Sample: PostMessage(HWND, IOType, IDList, )
 //
 
 typedef struct tagIOItem
 {
+	LONG id;
 	DWORD maxSize;
 	DWORD offset;
 	union
@@ -178,12 +219,13 @@ typedef struct tagIOItem
 typedef struct tagIOList
 {
 	BOOL isCompleted;
+	UINT uIOType;
 	HANDLE hEvent;
-	LONG count;
+	LONG nCount;
 	PIOItem pItemList;
 
-	static tagIOList * WINAPI CreateIOList(LONG count, HANDLE event);
-	PIOItem SetIOListItem(LONG index, DWORD maxSize, DWORD offset, DWORD sizeEnd, LPVOID lpData);
+	static tagIOList * WINAPI CreateIOList(UINT type, HANDLE event, LONG count);
+	PIOItem SetIOListItem(LONG index, LONG id, DWORD maxSize, DWORD offset, DWORD sizeEnd, LPVOID lpData);
 	virtual ~tagIOList();
 
 private:
@@ -198,6 +240,7 @@ private:
 // Definition of FP thread routine
 //
 
+typedef std::pair<LONG, LPVOID> KeyValue;
 typedef UINT(CALLBACK *FP_THREAD_ROUTINE)(LPVOID);
 
 typedef struct tagThreadInfo
@@ -218,7 +261,7 @@ typedef std::map<LONG, PFPImage> ImageMap;
 typedef std::map<LONG, PFPAction> ActionMap;
 typedef std::vector<GraphicInfo> ImageList;
 typedef std::vector<AnimeInfo> ActionList;
-typedef std::deque<LONG> BinReqQueue;
+typedef std::set<LONG> BinReqSet;
 
 //游戏图像类
 class GameGraphics : public IGameGraphics
@@ -244,8 +287,8 @@ protected:
 	ImageMap mGraphicCache; //图像数据缓存
 	ActionMap mAnimeCache; //动画数据缓存
 
-	BinReqQueue mImageReqQueue; //图像IO请求队列
-	BinReqQueue mActionReqQueue; //动画IO请求队列
+	BinReqSet mImageReqQueue; //图像IO请求队列
+	BinReqSet mActionReqQueue; //动画IO请求队列
 
 	virtual ~GameGraphics(void); //析构函数
 	static UINT CALLBACK GraphicsIOComplete(LPVOID pParam); //图像IO完成接口
@@ -267,6 +310,7 @@ public:
 	HRESULT GetImage(const LONG id, const FPImage **pData); //通过ID得到图片
 	HRESULT GetAction(const LONG id, const FPAction **pData); //通过ID得到动画
 	HRESULT LoopIORequest(const DWORD dwTick); //轮询所有Graphics类的IO请求
+	HRESULT IODataBack(UINT type, LONG id, LPVOID data); //图像数据返回接口
 };
 
 

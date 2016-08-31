@@ -47,9 +47,9 @@ UINT CALLBACK BinProc(HANDLE param)
 			case FPMSG_THREAD_STOP:
 				mainIOThread.bRunning = FALSE;
 				break;
-			case FPMSG_IO_READ_IMAGEDATA:
+			case FPMSG_IO_READ_GRAPHICDATA:
+			case FPMSG_IO_READ_GRAPHICINFO:
 			case FPMSG_IO_READ_ANIMEDATA:
-			case FPMSG_IO_READ_IMAGEINFO:
 			case FPMSG_IO_READ_ANIMEINFO:
 				hParam = mainGraphics->GetFileHandle(msg.message);
 				hResult = FPFileRead(hParam, (PIOList)msg.wParam, (FP_THREAD_ROUTINE)msg.lParam);
@@ -81,27 +81,29 @@ UINT CALLBACK BinProc(HANDLE param)
 	return 0;
 }
 
-PIOList WINAPI IOList::CreateIOList(LONG count, HANDLE event)
+PIOList WINAPI IOList::CreateIOList(UINT type, HANDLE event, LONG count)
 {
 	PIOList list = new IOList();
 	list->isCompleted = FALSE;
+	list->uIOType = type;
 	list->hEvent = event;
-	list->count = count;
+	list->nCount = count;
 	PIOItem items = new IOItem[count];
 	ZeroMemory(items, count * sizeof(IOItem));
 	list->pItemList = items;
 	return list;
 }
 
-PIOItem IOList::SetIOListItem(LONG index, DWORD maxSize, DWORD offset, DWORD sizeEnd, LPVOID lpData)
+PIOItem IOList::SetIOListItem(LONG index, LONG id, DWORD maxSize, DWORD offset, DWORD sizeEnd, LPVOID lpData)
 {
-	if (index < 0 || index >= this->count)
+	if (index < 0 || index >= this->nCount)
 	{
 		return NULL;
 	}
 	PIOItem item = &(this->pItemList)[index];
 	if (maxSize > 0)
 	{
+		item->id = id;
 		item->maxSize = maxSize;
 		item->offset = offset;
 		item->end = sizeEnd;
@@ -109,6 +111,7 @@ PIOItem IOList::SetIOListItem(LONG index, DWORD maxSize, DWORD offset, DWORD siz
 	}
 	else
 	{
+		item->id = id;
 		item->maxSize = 0;
 		item->offset = offset;
 		item->size = sizeEnd;
@@ -134,6 +137,13 @@ UINT CALLBACK IOCompleteDefault(LPVOID pParam)
 		return E_INVALIDARG;
 	}
 	PIOList pList = (PIOList)pParam;
+	if (NULL != pList->hEvent)
+	{
+		if (!SetEvent(pList->hEvent))
+		{
+			return E_HANDLE;
+		}
+	}
 	delete pList;
 	return S_OK;
 }
@@ -148,11 +158,11 @@ static HRESULT FPFileRead(HANDLE hFile, PIOList pList, FP_THREAD_ROUTINE lpCallb
 	{
 		return E_INVALIDARG;
 	}
-	if (!(pList->count > 0) || NULL == pList->pItemList)
+	if (!(pList->nCount > 0) || NULL == pList->pItemList)
 	{
 		return E_POINTER;
 	}
-	for (LONG i = 0; i < pList->count; i++)
+	for (LONG i = 0; i < pList->nCount; i++)
 	{
 		pItem = &pList->pItemList[i];
 		if (NULL == pItem)
@@ -217,16 +227,16 @@ static HRESULT FPPalettePreload(const PPalLib pPal, PIOList pList, FP_THREAD_ROU
 	{
 		return E_INVALIDARG;
 	}
-	if (!(pList->count > 0) || NULL == pList->pItemList)
+	if (!(pList->nCount > 0) || NULL == pList->pItemList)
 	{
 		return E_POINTER;
 	}
-	if (pList->count != pPal->sum)
+	if (pList->nCount != pPal->sum)
 	{
 		return E_POINTER;
 	}
 	buffer = new BYTE[FP_FILE_SIZE_PAL];
-	for (LONG i = 0; i < pList->count; i++)
+	for (LONG i = 0; i < pList->nCount; i++)
 	{
 		strPath = pPal->palPath;
 		strPath += _T("\\");
@@ -286,9 +296,8 @@ HRESULT __fastcall EncryptData()
 	return S_OK;
 }
 
-HRESULT __fastcall DecryptData(LPBYTE lpData, DWORD dwLength, DWORD dwSize, LPBYTE *lppBuffer)
+HRESULT __fastcall DecryptData(LPBYTE lpData, DWORD dwLength, DWORD dwSize, LPBYTE lpBuffer)
 {
-	LPBYTE buffer = new BYTE[dwSize];
 	BOOL repeat, blank;
 	DWORD count, i, m, n;
 	BYTE step, key;
@@ -316,11 +325,10 @@ HRESULT __fastcall DecryptData(LPBYTE lpData, DWORD dwLength, DWORD dwSize, LPBY
 			if (m + count > dwSize)
 			{
 				count = dwSize - m;
-				memset(&buffer[m], key, count);
-				*lppBuffer = buffer;
+				memset(&lpBuffer[m], key, count);
 				return S_FALSE;
 			}
-			memset(&buffer[m], key, count);
+			memset(&lpBuffer[m], key, count);
 			m += count;
 			n += step;
 		}
@@ -335,15 +343,13 @@ HRESULT __fastcall DecryptData(LPBYTE lpData, DWORD dwLength, DWORD dwSize, LPBY
 			if (m + count > dwSize)
 			{
 				count = dwSize - m;
-				memset(&buffer[m], key, count);
-				*lppBuffer = buffer;
+				memset(&lpBuffer[m], key, count);
 				return S_FALSE;
 			}
-			memcpy(&buffer[m], &lpData[n], count);
+			memcpy(&lpBuffer[m], &lpData[n], count);
 			m += count;
 			n += count;
 		}
 	}
-	*lppBuffer = buffer;
 	return S_OK;
 }

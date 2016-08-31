@@ -31,4 +31,4 @@ HRESULT WINAPI StartIOThreads();
 HRESULT WINAPI DestroyIOThreads();
 
 HRESULT __fastcall EncryptData();
-HRESULT __fastcall DecryptData(LPBYTE lpData, DWORD dwLength, DWORD dwSize, LPBYTE *lppBuffer);
+HRESULT __fastcall DecryptData(LPBYTE lpData, DWORD dwLength, DWORD dwSize, LPBYTE lpBuffer);
