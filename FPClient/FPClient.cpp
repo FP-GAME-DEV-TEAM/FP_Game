@@ -161,6 +161,7 @@ BOOL InitWindow(int nCmdShow, HACCEL *phAccel)
 
 HRESULT GameLoop()
 {
+	gameGraphics->LoopIORequest(GetTickCount());
 	return S_OK;
 }
 

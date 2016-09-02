@@ -74,7 +74,7 @@ UINT CALLBACK BinProc(HANDLE param)
 		}
 		if (FAILED(hResult) && NULL != msg.wParam)
 		{
-			IOCompleteDefault(((PIOList)msg.wParam)->hEvent);
+			IOCompleteDefault((PIOList)msg.wParam);
 		}
 	}
 	_endthreadex(0);
@@ -307,8 +307,8 @@ HRESULT __fastcall DecryptData(LPBYTE lpData, DWORD dwLength, DWORD dwSize, LPBY
 	{
 		key = lpData[n] & 0xF0;
 		count = lpData[n] & 0x0F;
-		repeat = (key & 0xC0) & 0x80 == 0 ? FALSE : TRUE;
-		blank = (key & 0xC0) & 0x40 == 0 ? FALSE : TRUE;
+		repeat = ((key & 0xC0) & 0x80) == 0 ? FALSE : TRUE;
+		blank = ((key & 0xC0) & 0x40) == 0 ? FALSE : TRUE;
 		step = (key & 0x30) >> 4;
 		++n;
 		if (repeat)

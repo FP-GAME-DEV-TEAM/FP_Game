@@ -161,6 +161,8 @@ typedef struct tagFPImage
 {
 	LONG width; //图片的宽度
 	LONG height; //图片的高度
+	LONG offsetX; //图像显示时的X轴偏移
+	LONG offsetY; //图像显示时的Y轴偏移
 	DWORD data[1]; //图片像素填充数据
 } FPImage, *PFPImage;
 
@@ -169,7 +171,7 @@ typedef struct tagFPFrame
 {
 	DWORD duration; //所有动画帧播放一遍耗时
 	DWORD count; //动画帧总数
-	LONG index[1]; //帧数据开始
+	LONG index[1]; //帧数据开始10BYTES每帧
 } FPFrame, *PFPFrame;
 
 //可以直接播放的动画
@@ -198,11 +200,12 @@ public:
 class FP_MODULE_API IGameGraphics
 {
 public:
+	virtual LONG GetCurrentPaletteIndex() = 0; //获得当前调色板索引号
 	virtual HRESULT ChangePalette(const LONG id, const PALETTEENTRY **pData) = 0; //更换调色板
 	virtual HRESULT GetImage(const LONG id, const FPImage **pData) = 0; //通过ID得到图片
 	virtual HRESULT GetAction(const LONG id, const FPAction **pData) = 0; //通过ID得到动画
 	virtual HRESULT LoopIORequest(const DWORD dwTick) = 0; //轮询所有Graphics类的IO请求
-	virtual HRESULT IODataBack(UINT type, LONG id, LPVOID data) = 0; //图像数据返回接口
+	virtual HRESULT IODataBack(const UINT type, const LONG count, const LPVOID data) = 0; //图像数据返回接口
 };
 
 

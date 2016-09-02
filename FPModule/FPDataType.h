@@ -240,7 +240,7 @@ private:
 // Definition of FP thread routine
 //
 
-typedef std::pair<LONG, LPVOID> KeyValue;
+typedef std::pair<LONG, LPVOID> KeyValue, *PKeyValue;
 typedef UINT(CALLBACK *FP_THREAD_ROUTINE)(LPVOID);
 
 typedef struct tagThreadInfo
@@ -301,16 +301,17 @@ public:
 	HRESULT InitPalette(const PPalLib pPal); //加载调色板
 	HRESULT InitGraphicInfo(); //加载图像索引文件
 	HRESULT InitAnimeInfo(); //加载动画索引文件
-	HRESULT GetGraphicInfo(const LONG id, const GraphicInfo *pInfo); //加载图像索引文件
-	HRESULT GetAnimeInfo(const LONG id, const AnimeInfo *pInfo); //加载图像索引文件
+	HRESULT GetGraphicInfo(const LONG id, const GraphicInfo **pInfo); //加载图像索引文件
+	HRESULT GetAnimeInfo(const LONG id, const AnimeInfo **pInfo); //加载图像索引文件
 
 	// DLL interface functions
 
+	LONG GetCurrentPaletteIndex(); //获得当前调色板索引号
 	HRESULT ChangePalette(const LONG id, const PALETTEENTRY **pData); //更换调色板
 	HRESULT GetImage(const LONG id, const FPImage **pData); //通过ID得到图片
 	HRESULT GetAction(const LONG id, const FPAction **pData); //通过ID得到动画
 	HRESULT LoopIORequest(const DWORD dwTick); //轮询所有Graphics类的IO请求
-	HRESULT IODataBack(UINT type, LONG id, LPVOID data); //图像数据返回接口
+	HRESULT IODataBack(const UINT type, const LONG count, const LPVOID data); //图像数据返回接口
 };
 
 

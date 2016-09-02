@@ -110,50 +110,99 @@ UINT CALLBACK GameGraphics::GraphicsIOComplete(LPVOID pParam)
 		PFPImage pImg = NULL;
 		DWORD dwSize = 0;
 		KeyValue *kvList = new KeyValue[pList->nCount];
-		for (LONG i = 0; i < pList->nCount; i++)
+		for (LONG n = 0; n < pList->nCount; n++)
 		{
-			pItem = &pList->pItemList[i];
+			pItem = &pList->pItemList[n];
 			pGD = (PGraphicData)pItem->pData;
 			dwSize = pGD->width * pGD->height;
-			pImg = (PFPImage) new BYTE[(sizeof(FPImage)-sizeof(DWORD)) + dwSize];
+			pImg = (PFPImage)new BYTE[(sizeof(FPImage)-sizeof(DWORD)) + dwSize];
 			pImg->width = pGD->width;
 			pImg->height = pGD->height;
+			pImg->offsetX = pInstance->mGraphicList[pItem->id].offsetX;
+			pImg->offsetY = pInstance->mGraphicList[pItem->id].offsetY;
 			if (pGD->flag % 2 == 0)
 			{
 				CopyMemory(pImg->data, (pGD + 1), dwSize);
 			}
 			else
 			{
-				DecryptData((LPBYTE)(pGD + 1), pGD->size - sizeof(pGD), dwSize, (LPBYTE)(pImg->data));
+				DecryptData((LPBYTE)(pGD + 1), pGD->size - sizeof(GraphicData), dwSize, (LPBYTE)(pImg->data));
 			}
-			kvList[i].first = pItem->id;
-			kvList[i].second = pImg;
+			kvList[n].first = pItem->id;
+			kvList[n].second = pImg;
+			delete[] pItem->pData;
 		}
 		PostMessage(hMainWnd, FPMSG_IO_READ_GRAPHICDATA, pList->nCount, (LPARAM)kvList);
+	}
+	if (pList->isCompleted && pList->uIOType == FPMSG_IO_READ_ANIMEDATA)
+	{
+		PAnimeHead pAH = NULL;
+		PAnimeData pAD = NULL;
+		PFPAction pAct = NULL;
+		PFPFrame pFrm = NULL;
+		KeyValue *kvList = new KeyValue[pList->nCount];
+		for (LONG n = 0; n < pList->nCount; n++)
+		{
+			pItem = &pList->pItemList[n];
+			pAct = new FPAction();
+			ZeroMemory(pAct, sizeof(FPAction));
+			LPBYTE lpPtr = (LPBYTE)pItem->pData;
+			WORD wCount = pInstance->mAnimeList[pItem->id].count;
+			for (WORD i = 0; i < wCount; i++)
+			{
+				pAH = (PAnimeHead)lpPtr;
+				lpPtr += sizeof(AnimeHead);
+				pFrm = (PFPFrame)new BYTE[(sizeof(FPFrame)-sizeof(LONG)) + (pAH->frames)*sizeof(AnimeData)];
+				pFrm->duration = pAH->duration;
+				pFrm->count = pAH->frames;
+				pAD = (PAnimeData)lpPtr;
+				CopyMemory(pFrm->index, pAD, (pAH->frames)*sizeof(AnimeData));
+				pAct->frame[pAH->facing][pAH->action] = pFrm;
+				lpPtr += (pAH->frames)*sizeof(AnimeData);
+			}
+			kvList[n].first = pItem->id;
+			kvList[n].second = pAct;
+			delete[] pItem->pData;
+		}
+		PostMessage(hMainWnd, FPMSG_IO_READ_ANIMEDATA, pList->nCount, (LPARAM)kvList);
 	}
 	return IOCompleteDefault(pParam);
 }
 
-HRESULT GameGraphics::IODataBack(UINT type, LONG id, LPVOID data)
+HRESULT GameGraphics::IODataBack(const UINT type, const LONG count, const LPVOID data)
 {
 	if (FPMSG_IO_READ_GRAPHICDATA == type)
 	{
-		ImageMap::iterator it = mGraphicCache.find(id);
-		if (it == mGraphicCache.end())
+		KeyValue *kvList = (PKeyValue)data;
+		ImageMap::iterator it;
+		for (LONG i = 0; i < count; i++)
 		{
-			return E_FAIL;
+			it = mGraphicCache.find(kvList[i].first);
+			if (it == mGraphicCache.end())
+			{
+				return E_FAIL;
+			}
+			it->second = (PFPImage)kvList[i].second;
+			PostMessage(hMainWnd, FPMSG_WINDOW_DEBUG_MSG, kvList[i].first, (LPARAM)kvList[i].second);
 		}
-		it->second = (PFPImage)data;
+		delete[] kvList;
 		return S_OK;
 	}
 	if (FPMSG_IO_READ_ANIMEDATA == type)
 	{
-		ActionMap::iterator it = mAnimeCache.find(id);
-		if (it == mAnimeCache.end())
+		KeyValue *kvList = (PKeyValue)data;
+		ActionMap::iterator it;
+		for (LONG i = 0; i < count; i++)
 		{
-			return E_FAIL;
+			it = mAnimeCache.find(kvList[i].first);
+			if (it == mAnimeCache.end())
+			{
+				return E_FAIL;
+			}
+			it->second = (PFPAction)kvList[i].second;
+			PostMessage(hMainWnd, FPMSG_WINDOW_DEBUG_MSG, kvList[i].first, (LPARAM)kvList[i].second);
 		}
-		it->second = (PFPAction)data;
+		delete[] kvList;
 		return S_OK;
 	}
 	return E_FAIL;
@@ -186,11 +235,9 @@ HANDLE GameGraphics::GetFileHandle(const UINT type) const
 HRESULT GameGraphics::InitPalette(const PPalLib pPal)
 {
 	HRESULT hResult;
-	DWORD n, count;
+	LONG n;
 	tstring filePath = pPal->palPath;
 	tstring tmpPath;
-	HANDLE hFile;
-	LPBYTE buffer;
 
 	//固定调色板的载入
 	n = 0;
@@ -314,29 +361,44 @@ HRESULT GameGraphics::InitAnimeInfo()
 	return hResult;
 }
 
-HRESULT GameGraphics::GetGraphicInfo(const LONG id, const GraphicInfo *pInfo)
+HRESULT GameGraphics::GetGraphicInfo(const LONG id, const GraphicInfo **pInfo)
 {
 	if (id < 0 || id >= mGraphicList.size())
 	{
 		return E_FAIL;
 	}
-	pInfo = &mGraphicList[id];
+	if (NULL != pInfo)
+	{
+		*pInfo = &mGraphicList[id];
+	}
 	return S_OK;
 }
 
-HRESULT GameGraphics::GetAnimeInfo(const LONG id, const AnimeInfo *pInfo)
+HRESULT GameGraphics::GetAnimeInfo(const LONG id, const AnimeInfo **pInfo)
 {
 	if (id < 0 || id >= mAnimeList.size())
 	{
 		return E_FAIL;
 	}
-	pInfo = &mAnimeList[id];
+	if (NULL != pInfo)
+	{
+		*pInfo = &mAnimeList[id];
+	}
 	return S_OK;
+}
+
+LONG GameGraphics::GetCurrentPaletteIndex()
+{
+	return this->mPaletteIndex;
 }
 
 HRESULT GameGraphics::ChangePalette(const LONG id, const PALETTEENTRY **pData)
 {
 	DWORD i, n = 0;
+	if (id<0 || id >= FP_FILE_COUNT_PAL)
+	{
+		return E_FAIL;
+	}
 	if (mPaletteIndex == id)
 	{
 		if (NULL != pData)
@@ -405,48 +467,52 @@ HRESULT GameGraphics::GetAction(const LONG id, const FPAction **pData)
 
 HRESULT GameGraphics::LoopIORequest(const DWORD dwTick)
 {
-	HRESULT hResult;
 	LONG n, count;
 	BinReqSet::const_iterator it;
 	PIOList pList = NULL;
 	// Loop GraphicData IO Requests
 	n = 0;
 	count = mImageReqQueue.size();
-	pList = IOList::CreateIOList(FPMSG_IO_READ_GRAPHICDATA, NULL, count);
-	for (it = mImageReqQueue.cbegin(); it != mImageReqQueue.cend(); it++)
+	if (count > 0)
 	{
-		const GraphicInfo *pGraphic = NULL;
-		if (FAILED(GetGraphicInfo((*it), pGraphic)))
+		pList = IOList::CreateIOList(FPMSG_IO_READ_GRAPHICDATA, NULL, count);
+		for (it = mImageReqQueue.cbegin(); it != mImageReqQueue.cend(); it++)
 		{
-			return E_FAIL;
+			const GraphicInfo *pGraphic;
+			if (FAILED(GetGraphicInfo((*it), &pGraphic)))
+			{
+				continue;
+			}
+			if (NULL != pGraphic)
+			{
+				pList->SetIOListItem(n, (*it), 0, pGraphic->addr, pGraphic->size, new BYTE[pGraphic->size]);
+			}
+			n++;
 		}
-		if (NULL != pGraphic)
-		{
-			pList->SetIOListItem(n, (*it), 0, pGraphic->addr, pGraphic->size, new BYTE[pGraphic->size]);
-		}
-		n++;
+		PostThreadMessage(mainIOThread.uThreadId, FPMSG_IO_READ_GRAPHICDATA, (WPARAM)pList, (LPARAM)GraphicsIOComplete);
+		mImageReqQueue.clear();
 	}
-	PostThreadMessage(mainIOThread.uThreadId, FPMSG_IO_READ_GRAPHICDATA, (WPARAM)pList, (LPARAM)GraphicsIOComplete);
-	mImageReqQueue.clear();
 	// Loop AnimeData IO Requests
 	n = 0;
 	count = mActionReqQueue.size();
-	it = mActionReqQueue.cbegin();
-	pList = IOList::CreateIOList(FPMSG_IO_READ_ANIMEDATA, NULL, count);
-	for (it = mActionReqQueue.cbegin(); it != mActionReqQueue.cend(); it++)
+	if (count > 0)
 	{
-		const AnimeInfo *pAnime = NULL;
-		if (FAILED(GetAnimeInfo((*it), pAnime)))
+		pList = IOList::CreateIOList(FPMSG_IO_READ_ANIMEDATA, NULL, count);
+		for (it = mActionReqQueue.cbegin(); it != mActionReqQueue.cend(); it++)
 		{
-			return E_FAIL;
+			const AnimeInfo *pAnime = NULL;
+			if (FAILED(GetAnimeInfo((*it), &pAnime)))
+			{
+				continue;
+			}
+			if (NULL != pAnime)
+			{
+				pList->SetIOListItem(n, (*it), 0, pAnime->addr, pAnime->size, new BYTE[pAnime->size]);
+			}
+			n++;
 		}
-		if (NULL != pAnime)
-		{
-			pList->SetIOListItem(n, (*it), 0, pAnime->addr, pAnime->size, new BYTE[pAnime->size]);
-		}
-		n++;
+		PostThreadMessage(mainIOThread.uThreadId, FPMSG_IO_READ_ANIMEDATA, (WPARAM)pList, (LPARAM)GraphicsIOComplete);
+		mActionReqQueue.clear();
 	}
-	PostThreadMessage(mainIOThread.uThreadId, FPMSG_IO_READ_ANIMEDATA, (WPARAM)pList, (LPARAM)GraphicsIOComplete);
-	mActionReqQueue.clear();
 	return S_OK;
 }

@@ -5,8 +5,10 @@
 #include "FPClient.h"
 
 HRESULT SwitchDisplayMode(HWND hWnd);
-// Just for test switch palette
-HRESULT TestPrintPalette(LONG id, PALETTEENTRY *pArray);
+
+// Functions below are just for testing
+HRESULT TestPrintDebugMsg(WPARAM wParam, LPARAM lParam);
+HRESULT TestIORequest();
 
 LRESULT CALLBACK MainProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -21,6 +23,10 @@ LRESULT CALLBACK MainProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case IDM_TOGGLEDISPLAYMODE:
 			// Toggle the fullscreen/window mode
 			SwitchDisplayMode(hWnd);
+			break;
+		case IDM_USERTRIGGERESCAPE:
+			TestIORequest();
+			break;
 		}
 		break;
 
@@ -31,7 +37,7 @@ LRESULT CALLBACK MainProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case FPMSG_WINDOW_DEBUG_MSG:
-		TestPrintPalette((LONG)wParam, (PALETTEENTRY *)lParam);
+		TestPrintDebugMsg(wParam, lParam);
 		break;
 
 	case WM_PAINT:
@@ -68,12 +74,6 @@ LRESULT CALLBACK MainProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 HRESULT SwitchDisplayMode(HWND hWnd)
 {
-	// Test switch palette
-	const PALETTEENTRY *pPalet;
-	if (fWindowed)
-		gameGraphics->ChangePalette(1, &pPalet); //≤‚ ‘IO
-	else
-		gameGraphics->ChangePalette(2, &pPalet); //≤‚ ‘IO
 	fWindowed = !fWindowed;
 	if (FAILED(InitGameDisplay(fWindowed)))
 	{
@@ -92,18 +92,62 @@ HRESULT SwitchDisplayMode(HWND hWnd)
 	return S_OK;
 }
 
-HRESULT TestPrintPalette(LONG id, PALETTEENTRY *pArray)
+HRESULT TestPrintDebugMsg(WPARAM wParam, LPARAM lParam)
 {
-	// Test switch palette
-	FP_DEBUG_MSG(_T("Palette %d Data:"), id);
-	for (int i = 0; i < FP_STORE_PAL_OPTIONAL; i++)
+	/*Test switch palette
+	FP_DEBUG_MSG(_T("Palette %d Data:"), wParam);
+	for (LONG i = 0; i < FP_STORE_PAL_OPTIONAL; i++)
 	{
 		if (i % 4 == 0)
 		{
 			FP_DEBUG_MSG(_T("\n"));
 		}
-		FP_DEBUG_MSG(_T(" 0x%08x "), pArray[i]);
+		FP_DEBUG_MSG(_T("%08x "), ((PALETTEENTRY*)lParam)[i]);
 	}
 	FP_DEBUG_MSG(_T("\n"));
+	//*/
+
+	//*Test Image IO Request
+	FP_DEBUG_MSG(_T("Image %d Attribute: \n"), wParam);
+	PFPImage pImage = (PFPImage)lParam;
+	FP_DEBUG_MSG(_T("\tWidth:%d Height: %d \n"), pImage->width, pImage->height);
+	FP_DEBUG_MSG(_T("Binary Data:"), wParam);
+	LONG size = (pImage->width * pImage->height) / 4;
+	for (LONG i = 0; i < size; i++)
+	{
+		if (i % 8 == 0)
+		{
+			FP_DEBUG_MSG(_T("\n"));
+		}
+		FP_DEBUG_MSG(_T("%08x "), pImage->data[i]);
+	}
+	FP_DEBUG_MSG(_T("\n"));
+	//*/
+
+	return S_OK;
+}
+
+HRESULT TestIORequest()
+{
+	/*Test switch palette
+	LONG index = gameGraphics->GetCurrentPaletteIndex();
+	const PALETTEENTRY *pPalet;
+	index++;
+	if (index >= FP_FILE_COUNT_PAL)
+	{
+		index = 0; 
+	}
+	gameGraphics->ChangePalette(index, &pPalet); //≤‚ ‘IO
+	//*/
+
+	//*Test Image IO Request
+	const FPImage *pImage = NULL;
+	gameGraphics->GetImage(1234, &pImage);
+	if (pImage != NULL)
+	{
+		PostMessage(hMainWnd, FPMSG_WINDOW_DEBUG_MSG, 0, (LPARAM)pImage);
+	}
+	//*/
+
 	return S_OK;
 }
