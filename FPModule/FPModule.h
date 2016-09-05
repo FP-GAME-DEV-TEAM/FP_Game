@@ -201,11 +201,11 @@ class FP_MODULE_API IGameGraphics
 {
 public:
 	virtual LONG GetCurrentPaletteIndex() = 0; //获得当前调色板索引号
-	virtual HRESULT ChangePalette(const LONG id, const PALETTEENTRY **pData) = 0; //更换调色板
-	virtual HRESULT GetImage(const LONG id, const FPImage **pData) = 0; //通过ID得到图片
-	virtual HRESULT GetAction(const LONG id, const FPAction **pData) = 0; //通过ID得到动画
+	virtual HRESULT ChangePalette(const LONG id, LPPALETTEENTRY *pData) = 0; //更换调色板
+	virtual HRESULT GetImage(const LONG id, PFPImage *pData) = 0; //通过ID得到图片
+	virtual HRESULT GetAction(const LONG id, PFPAction *pData) = 0; //通过ID得到动画
 	virtual HRESULT LoopIORequest(const DWORD dwTick) = 0; //轮询所有Graphics类的IO请求
-	virtual HRESULT IODataBack(const UINT type, const LONG count, const LPVOID data) = 0; //图像数据返回接口
+	virtual HRESULT IODataBack(const UINT type, const LONG count, LPVOID data) = 0; //图像数据返回接口
 };
 
 

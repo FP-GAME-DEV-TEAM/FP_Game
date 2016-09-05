@@ -162,6 +162,13 @@ BOOL InitWindow(int nCmdShow, HACCEL *phAccel)
 HRESULT GameLoop()
 {
 	gameGraphics->LoopIORequest(GetTickCount());
+	// for test
+	FPImage *pImage = NULL;
+	gameGraphics->GetImage(10912, &pImage);
+	if (pImage != NULL)
+	{
+		GameDisplayLoop(hMainWnd, pImage, 192, 32);
+	}
 	return S_OK;
 }
 

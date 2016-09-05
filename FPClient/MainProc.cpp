@@ -84,7 +84,7 @@ HRESULT SwitchDisplayMode(HWND hWnd)
 		if (FAILED(InitGameDisplay(fWindowed)))
 		{
 			FP_DEBUG_MSG(_T("Failed to switch display mode again!\n"));
-			PostMessage(hWnd, WM_CLOSE, 0, 0);
+			PostMessage(hWnd, WM_DESTROY, 0, 0);
 			FP_DEBUG_MSG(_T("The game process is forced to quit!\n"));
 		}
 		MessageBox(hWnd, _T("Switched to former display mode."), _T("Error"), MB_ICONWARNING | MB_OK);
@@ -141,7 +141,7 @@ HRESULT TestIORequest()
 	//*/
 
 	//*Test Image IO Request
-	const FPImage *pImage = NULL;
+	PFPImage pImage = NULL;
 	gameGraphics->GetImage(1234, &pImage);
 	if (pImage != NULL)
 	{

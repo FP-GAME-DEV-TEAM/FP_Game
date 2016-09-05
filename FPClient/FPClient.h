@@ -44,8 +44,8 @@
 #define STAGE_BBP_HIGH				32
 
 /* Application display mode */
-#define STAGE_MODE_FULLSCREEN		FALSE
-#define STAGE_MODE_WINDOWED			TRUE
+#define STAGE_MODE_FULLSCREEN		0
+#define STAGE_MODE_WINDOWED			1
 
 // Declarations of external globals
 extern HINSTANCE hInst;
@@ -58,5 +58,6 @@ extern IGameEnv *gameEnv;
 extern IGameGraphics *gameGraphics;
 
 // Declarations of external functions
-extern HRESULT InitGameDisplay(BOOL flag);
-extern VOID DestroyGameDisplay();
+HRESULT InitGameDisplay(DWORD dwType);
+VOID DestroyGameDisplay();
+HRESULT GameDisplayLoop(HWND hWnd, PFPImage pImage, LONG destX, LONG destY);

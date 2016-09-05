@@ -307,11 +307,11 @@ public:
 	// DLL interface functions
 
 	LONG GetCurrentPaletteIndex(); //获得当前调色板索引号
-	HRESULT ChangePalette(const LONG id, const PALETTEENTRY **pData); //更换调色板
-	HRESULT GetImage(const LONG id, const FPImage **pData); //通过ID得到图片
-	HRESULT GetAction(const LONG id, const FPAction **pData); //通过ID得到动画
+	HRESULT ChangePalette(const LONG id, PPALETTEENTRY *pData); //更换调色板
+	HRESULT GetImage(const LONG id, PFPImage *pData); //通过ID得到图片
+	HRESULT GetAction(const LONG id, PFPAction *pData); //通过ID得到动画
 	HRESULT LoopIORequest(const DWORD dwTick); //轮询所有Graphics类的IO请求
-	HRESULT IODataBack(const UINT type, const LONG count, const LPVOID data); //图像数据返回接口
+	HRESULT IODataBack(const UINT type, const LONG count, LPVOID data); //图像数据返回接口
 };
 
 

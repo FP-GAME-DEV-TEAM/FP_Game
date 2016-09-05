@@ -122,7 +122,7 @@ UINT CALLBACK GameGraphics::GraphicsIOComplete(LPVOID pParam)
 			pImg->offsetY = pInstance->mGraphicList[pItem->id].offsetY;
 			if (pGD->flag % 2 == 0)
 			{
-				CopyMemory(pImg->data, (pGD + 1), dwSize);
+				CopyMemory((LPBYTE)pImg->data, (pGD + 1), dwSize);
 			}
 			else
 			{
@@ -169,7 +169,7 @@ UINT CALLBACK GameGraphics::GraphicsIOComplete(LPVOID pParam)
 	return IOCompleteDefault(pParam);
 }
 
-HRESULT GameGraphics::IODataBack(const UINT type, const LONG count, const LPVOID data)
+HRESULT GameGraphics::IODataBack(const UINT type, const LONG count, LPVOID data)
 {
 	if (FPMSG_IO_READ_GRAPHICDATA == type)
 	{
@@ -392,7 +392,7 @@ LONG GameGraphics::GetCurrentPaletteIndex()
 	return this->mPaletteIndex;
 }
 
-HRESULT GameGraphics::ChangePalette(const LONG id, const PALETTEENTRY **pData)
+HRESULT GameGraphics::ChangePalette(const LONG id,  LPPALETTEENTRY *pData)
 {
 	DWORD i, n = 0;
 	if (id<0 || id >= FP_FILE_COUNT_PAL)
@@ -429,7 +429,7 @@ HRESULT GameGraphics::ChangePalette(const LONG id, const PALETTEENTRY **pData)
 	return S_OK;
 }
 
-HRESULT GameGraphics::GetImage(const LONG id, const FPImage **pData)
+HRESULT GameGraphics::GetImage(const LONG id, PFPImage *pData)
 {
 	if (id < 0 || id >= mGraphicList.size() || NULL == pData)
 	{
@@ -447,7 +447,7 @@ HRESULT GameGraphics::GetImage(const LONG id, const FPImage **pData)
 	return S_FALSE;
 }
 
-HRESULT GameGraphics::GetAction(const LONG id, const FPAction **pData)
+HRESULT GameGraphics::GetAction(const LONG id, PFPAction *pData)
 {
 	if (id < 0 || id >= mAnimeList.size() || NULL == pData)
 	{

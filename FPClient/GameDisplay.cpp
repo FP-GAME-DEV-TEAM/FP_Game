@@ -8,6 +8,8 @@
 LPDIRECTDRAW7 lpdd = NULL;
 LPDIRECTDRAWSURFACE7 lpddsMain = NULL;
 LPDIRECTDRAWSURFACE7 lpddsBack = NULL;
+LPDIRECTDRAWSURFACE7 lpddsTiles = NULL;
+LPDIRECTDRAWSURFACE7 lpddsObjects = NULL;
 
 PALETTEENTRY palMain[FP_STORE_PAL_COUNT];
 
@@ -15,7 +17,7 @@ PALETTEENTRY palMain[FP_STORE_PAL_COUNT];
 static HRESULT CreateWindowedDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight);
 static HRESULT CreateFullScreenDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight, DWORD dwBPP);
 
-HRESULT InitGameDisplay(BOOL flag)
+HRESULT InitGameDisplay(DWORD dwType)
 {
 	DWORD dwRet = E_FAIL;
 	// Check if DirectDraw Object exist
@@ -28,21 +30,19 @@ HRESULT InitGameDisplay(BOOL flag)
 	DestroyGameDisplay();
 
 	// Initialize the game display on window mode or fullscreen
-	if (fWindowed == STAGE_MODE_WINDOWED)
+	if (dwType == STAGE_MODE_WINDOWED)
 	{
 		dwRet = CreateWindowedDisplay(hMainWnd, STAGE_WINDOW_WIDTH, STAGE_WINDOW_HEIGHT);
 		if (S_OK == dwRet)
 		{
-			fWindowed = TRUE;
 			FP_DEBUG_MSG(_T("Switched to windowed display mode.\n"));
 		}
 	}
-	else if (fWindowed == STAGE_MODE_FULLSCREEN)
+	else if (dwType == STAGE_MODE_FULLSCREEN)
 	{
-		dwRet = CreateFullScreenDisplay(hMainWnd, STAGE_DEFAULT_WIDTH, STAGE_DEFAULT_HEIGHT, STAGE_BPP_LOW);
+		dwRet = CreateFullScreenDisplay(hMainWnd, STAGE_DEFAULT_WIDTH, STAGE_DEFAULT_HEIGHT, STAGE_BBP_HIGH);
 		if (S_OK == dwRet)
 		{
-			fWindowed = FALSE;
 			FP_DEBUG_MSG(_T("Switched to full-screen display mode.\n"));
 		}
 	}
@@ -95,11 +95,20 @@ static HRESULT CreateWindowedDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight)
 		return E_FAIL;
 	}
 	// Create the backbuffer surface
-	ddsd.dwFlags = DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT;
+	ddsd.dwFlags = DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT | DDSD_CKSRCBLT;
 	ddsd.ddsCaps.dwCaps = DDSCAPS_OFFSCREENPLAIN | DDSCAPS_3DDEVICE;
 	ddsd.dwWidth = dwWidth;
 	ddsd.dwHeight = dwHeight;
 	if (FAILED(lpdd->CreateSurface(&ddsd, &lpddsBack, NULL)))
+	{
+		return E_FAIL;
+	}
+
+	// Set surface color key
+	DDCOLORKEY ddCK;
+	ddCK.dwColorSpaceLowValue = 0;
+	ddCK.dwColorSpaceHighValue = 0;
+	if (lpddsBack->SetColorKey(DDCKEY_SRCBLT, &ddCK))
 	{
 		return E_FAIL;
 	}
@@ -158,7 +167,7 @@ static HRESULT CreateFullScreenDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight,
 	// Create primary surface (with backbuffer attached)
 	DDSURFACEDESC2 ddsd;
 	DDRAW_INIT_STRUCT(ddsd);
-	ddsd.dwFlags = DDSD_CAPS | DDSD_BACKBUFFERCOUNT;
+	ddsd.dwFlags = DDSD_CAPS | DDSD_BACKBUFFERCOUNT | DDSD_CKSRCBLT;
 	ddsd.ddsCaps.dwCaps = DDSCAPS_PRIMARYSURFACE | DDSCAPS_FLIP |
 		DDSCAPS_COMPLEX | DDSCAPS_3DDEVICE;
 	ddsd.dwBackBufferCount = 1;
@@ -175,12 +184,69 @@ static HRESULT CreateFullScreenDisplay(HWND hWnd, DWORD dwWidth, DWORD dwHeight,
 	{
 		return E_FAIL;
 	}
-	lpddsBack->AddRef();
+	//lpddsBack->AddRef();
+
+	// Set surface color key
+	DDCOLORKEY ddCK;
+	ddCK.dwColorSpaceLowValue = 0;
+	ddCK.dwColorSpaceHighValue = 0;
+	if (lpddsBack->SetColorKey(DDCKEY_SRCBLT, &ddCK))
+	{
+		return E_FAIL;
+	}
 
 	// Update window flag
 	SetClassLong(hWnd, GCL_HICONSM, NULL);
 	SendMessage(hWnd, WM_SETICON, ICON_SMALL, NULL);
 	UpdateWindow(hWnd);
 
+	return S_OK;
+}
+
+HRESULT GameDisplayLoop(HWND hWnd, PFPImage pImage, LONG destX, LONG destY)
+{
+	HRESULT hResult;
+	DDBLTFX ddBltFx;
+	memset(&ddBltFx, 0, sizeof(ddBltFx));
+	ddBltFx.dwSize = sizeof(ddBltFx);
+	ddBltFx.dwROP = SRCCOPY;
+
+	RECT rcMain = { 0 };
+	GetClientRect(hWnd, &rcMain);
+	ClientToScreen(hWnd, ((LPPOINT)&rcMain) + 0);
+	ClientToScreen(hWnd, ((LPPOINT)&rcMain) + 1);
+	//FP_DEBUG_MSG(_T("CLINET RECT: (%d, %d) - (%d, %d)\n"), rcMain.top, rcMain.bottom, rcMain.left, rcMain.right);
+
+	RECT rcBack = { 0 };
+	DDSURFACEDESC2 ddsd;
+	DDRAW_INIT_STRUCT(ddsd);
+	if (FAILED(hResult = lpddsBack->Lock(NULL, &ddsd, DDLOCK_SURFACEMEMORYPTR | DDLOCK_WAIT, NULL)))
+	{
+		FP_DEBUG_MSG(_T("Lock Error: 0x%08x\n"), hResult);
+		return E_FAIL;
+	}
+	LPPALETTEENTRY lpPalet = NULL;
+	if (FAILED(gameGraphics->ChangePalette(FP_PALETTE_DAY, &lpPalet)))
+	{
+		return E_FAIL;
+	}
+	LPBYTE lpPixel = (LPBYTE)ddsd.lpSurface;
+	LPBYTE lpData = (LPBYTE)pImage->data;
+	LONG n = 0;
+	for (LONG i = 0; i < pImage->height; i++)
+	{
+		n = (i + destY) * ddsd.lPitch + destX * sizeof(PALETTEENTRY);
+		for (LONG j = 0; j < pImage->width; j++, n += 4)
+		{
+			LPBYTE lpPtr = &lpPixel[n];
+			*(lpPtr + 0) = lpPalet[lpData[(pImage->height - i - 1) * pImage->width + j]].peRed;
+			*(lpPtr + 1) = lpPalet[lpData[(pImage->height - i - 1) * pImage->width + j]].peGreen;
+			*(lpPtr + 2) = lpPalet[lpData[(pImage->height - i - 1) * pImage->width + j]].peBlue;
+			*(lpPtr + 3) = 0;
+		}
+	}
+	lpddsBack->Unlock(NULL);
+
+	lpddsMain->Blt(&rcMain, lpddsBack, NULL, DDBLT_WAIT, &ddBltFx);
 	return S_OK;
 }
